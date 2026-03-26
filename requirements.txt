@@ -1,5 +1,5 @@
-﻿fastapi
-uvicorn[standard]
-sqlalchemy
-pymysql
-cryptography
+﻿fastapi==0.111.0
+uvicorn[standard]==0.30.0
+sqlalchemy==2.0.30
+pymysql==1.1.1
+cryptography==46.0.5

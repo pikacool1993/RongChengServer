@@ -2,12 +2,14 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from database import SessionLocal, engine
-from models import Base, User, Device, Event
+from .database import SessionLocal, engine
+from .models import Base, User, Device, Event
+from .admin import router as admin_router
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.include_router(admin_router)
 
 def get_db():
     db = SessionLocal()
