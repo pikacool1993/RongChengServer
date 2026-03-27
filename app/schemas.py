@@ -10,5 +10,6 @@ class EventRequest(BaseModel):
     event: str
 
 class AdminCreateUserRequest(BaseModel):
+    name: str
     api_key: str
     max_devices: int

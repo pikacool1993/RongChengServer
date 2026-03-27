@@ -13,6 +13,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # =========================
 @router.post("/user/create")
 def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
+    name = req.name
     api_key = req.api_key
     max_devices = req.max_devices
 
@@ -20,13 +21,14 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     if existing:
         return fail(msg="User already exists")
 
-    u = User(api_key=api_key, max_devices=max_devices)
+    u = User(name=name, api_key=api_key, max_devices=max_devices)
     db.add(u)
     db.commit()
     db.refresh(u)
 
     return success({
         "id": u.id,
+        "name": u.name,
         "api_key": u.api_key,
         "max_devices": u.max_devices,
         "created_at": u.created_at

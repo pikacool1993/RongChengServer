@@ -7,6 +7,7 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
+    name = Column(String(32), nullable=True)
     api_key = Column(String(64), unique=True, index=True)
     max_devices = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.now)
