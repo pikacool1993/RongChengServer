@@ -14,18 +14,18 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
 
   api:
     build: .
-    container_name: fastapi_app
+    container_name: cdrc_app
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       DATABASE_URL: mysql+pymysql://root:123456@db:3306/rc_db
 
