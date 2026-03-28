@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -9,11 +10,47 @@ from .database import SessionLocal, engine
 from .models import Base, User, Device, Event
 from .admin import router as admin_router
 from .response import success, fail
+from .sign import generate_sign
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 app.include_router(admin_router)
+
+@app.middleware("http")
+async def verify_sign(request: Request, call_next):
+    # 不校验 admin 或健康检查
+    if request.url.path.startswith("/admin"):
+        return await call_next(request)
+
+    timestamp = request.headers.get("timestamp")
+    sign = request.headers.get("sign")
+
+    if not timestamp or not sign:
+        return JSONResponse(content=fail(msg="missing sign"), status_code=200)
+
+    # 防止重放攻击（允许 5 分钟）
+    now = int(time.time())
+    if abs(now - int(timestamp)) > 300:
+        return JSONResponse(content=fail(msg="timestamp expired"), status_code=200)
+
+    # 读取 body
+    body_bytes = await request.body()
+    try:
+        body = json.loads(body_bytes) if body_bytes else {}
+    except:
+        body = {}
+
+        # 重新计算签名
+    server_sign = generate_sign(body, timestamp)
+
+    if server_sign != sign:
+        return JSONResponse(content=fail(msg="invalid sign"), status_code=200)
+
+    # 继续执行
+    response = await call_next(request)
+    return response
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
