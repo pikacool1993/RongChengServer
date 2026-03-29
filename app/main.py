@@ -96,7 +96,7 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
     if not u:
         return success({
             "auth_status": 2,
-            "t": time
+            "t": now
         })
 
     device = db.query(Device).filter_by(user_id=u.id, device_id=device_id).first()
@@ -107,7 +107,7 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
         if device_count >= u.max_devices:
             return success({
                 "auth_status": 3,
-                "t": time
+                "t": now
             })
 
         db.add(Device(
