@@ -90,11 +90,13 @@ def get_db():
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
     api_key = req.api_key
     device_id = req.device_id
+    now = int(time.time())
 
     u = db.query(User).filter_by(api_key=api_key).first()
     if not u:
         return success({
-            "auth_status": 2
+            "auth_status": 2,
+            "t": time
         })
 
     device = db.query(Device).filter_by(user_id=u.id, device_id=device_id).first()
@@ -104,7 +106,8 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
 
         if device_count >= u.max_devices:
             return success({
-                "auth_status": 3
+                "auth_status": 3,
+                "t": time
             })
 
         db.add(Device(
@@ -117,7 +120,10 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return success({
-        "auth_status": 1
+        "auth_status": 1,
+        "device_id": device_id,
+        "api_key": api_key,
+        "t": now
     })
 
 @app.post("/event")
