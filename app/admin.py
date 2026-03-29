@@ -31,7 +31,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
         "name": u.name,
         "api_key": u.api_key,
         "max_devices": u.max_devices,
-        "created_at": u.created_at
+        "created_at": u.created_at.timestamp()
     })
 
 # =========================
@@ -46,7 +46,7 @@ def list_users(db: Session = Depends(get_db)):
                 "id": u.id,
                 "api_key": u.api_key,
                 "max_devices": u.max_devices,
-                "created_at": u.created_at,
+                "created_at": u.created_at.timestamp(),
             }
             for u in users
         ]
@@ -82,8 +82,8 @@ def get_user_devices(api_key: str, db: Session = Depends(get_db)):
             {
                 "id": d.id,
                 "device_id": d.device_id,
-                "first_seen": d.first_seen,
-                "last_seen": d.last_seen,
+                "first_seen": d.first_seen.timestamp(),
+                "last_seen": d.last_seen.timestamp(),
             }
             for d in devices
         ],
@@ -107,7 +107,7 @@ def get_user_events(api_key: str, db: Session = Depends(get_db)):
                 "id": e.id,
                 "device_id": e.device_id,
                 "event_type": e.event_type,
-                "created_at": e.created_at,
+                "created_at": e.created_at.timestamp(),
             }
             for e in events
         ],
