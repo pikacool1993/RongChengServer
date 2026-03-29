@@ -129,7 +129,9 @@ def log_event(req: EventRequest, db: Session = Depends(get_db)):
     u = db.query(User).filter_by(api_key=api_key).first()
 
     if not u:
-        return fail(code=1, msg="unauthorized")
+        return success({
+            "status": 2
+        })
 
     db.add(Event(
         user_id=u.id,
@@ -138,4 +140,6 @@ def log_event(req: EventRequest, db: Session = Depends(get_db)):
     ))
     db.commit()
 
-    return success({})
+    return success({
+        "status": 1
+    })
