@@ -15,13 +15,13 @@ from .sign import generate_sign
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+# app = FastAPI()
 
-# app = FastAPI(
-#     docs_url=None,
-#     redoc_url=None,
-#     openapi_url=None
-# )
+app = FastAPI(
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
+)
 
 app.include_router(admin_router)
 
