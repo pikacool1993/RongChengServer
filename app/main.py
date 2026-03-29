@@ -1,4 +1,5 @@
 import time
+import json
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -15,37 +16,49 @@ from .sign import generate_sign
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# app = FastAPI(
+#     docs_url=None,
+#     redoc_url=None,
+#     openapi_url=None
+# )
+
 app.include_router(admin_router)
+
+def is_excluded(path: str) -> bool:
+    excluded = (
+        path.startswith("/docs")
+        or path.startswith("/redoc")
+        or path.startswith("/openapi.json")
+        or path.startswith("/admin")
+    )
+    return excluded
 
 @app.middleware("http")
 async def verify_sign(request: Request, call_next):
-    # 不校验 admin 或健康检查
-    if request.url.path.startswith("/admin"):
+    if is_excluded(request.url.path):
         return await call_next(request)
 
-    timestamp = request.headers.get("timestamp")
-    sign = request.headers.get("sign")
+    # 读取 header
+    timestamp = request.headers.get("Timestamp")
+    sign = request.headers.get("Sign")
 
     if not timestamp or not sign:
-        return JSONResponse(content=fail(msg="missing sign"), status_code=200)
+        return JSONResponse(content=fail(-2, msg="missing sign"), status_code=200)
 
     # 防止重放攻击（允许 5 分钟）
     now = int(time.time())
     if abs(now - int(timestamp)) > 300:
-        return JSONResponse(content=fail(msg="timestamp expired"), status_code=200)
+        return JSONResponse(content=fail(-3, msg="timestamp expired"), status_code=200)
 
     # 读取 body
     body_bytes = await request.body()
-    try:
-        body = json.loads(body_bytes) if body_bytes else {}
-    except:
-        body = {}
+    body = json.loads(body_bytes) if body_bytes else {}
 
-        # 重新计算签名
+    # 校验 sign
     server_sign = generate_sign(body, timestamp)
-
     if server_sign != sign:
-        return JSONResponse(content=fail(msg="invalid sign"), status_code=200)
+        return JSONResponse(content=fail(-4, msg="invalid sign"), status_code=200)
 
     # 继续执行
     response = await call_next(request)
@@ -56,14 +69,14 @@ async def verify_sign(request: Request, call_next):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=200,
-        content=fail(msg=str(exc))
+        content=fail(-200, msg=str(exc))
     )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=200,
-        content=fail(msg=str(exc))
+        content=fail(-100, msg=str(exc))
     )
 
 def get_db():
@@ -80,7 +93,9 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
 
     u = db.query(User).filter_by(api_key=api_key).first()
     if not u:
-        return fail(code=1, msg="unauthorized")
+        return success({
+            "auth_status": 2
+        })
 
     device = db.query(Device).filter_by(user_id=u.id, device_id=device_id).first()
 
@@ -88,7 +103,9 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
         device_count = db.query(Device).filter_by(user_id=u.id).count()
 
         if device_count >= u.max_devices:
-            return fail(code=2, msg="device limit reached")
+            return success({
+                "auth_status": 3
+            })
 
         db.add(Device(
             user_id=u.id,
@@ -99,11 +116,8 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
 
     db.commit()
 
-    device_count = db.query(Device).filter_by(user_id=u.id).count()
-
     return success({
-        "device_count": device_count,
-        "max_devices": u.max_devices
+        "auth_status": 1
     })
 
 @app.post("/event")

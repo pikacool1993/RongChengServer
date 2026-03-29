@@ -2,7 +2,7 @@ import hashlib
 import json
 from typing import Dict, Any
 
-SECRET = "my_secret_key"
+SECRET = "he93GjVTFEFWrUU4"
 
 def md5(text: str) -> str:
     return hashlib.md5(text.encode("utf-8")).hexdigest()
