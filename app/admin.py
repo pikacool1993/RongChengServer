@@ -31,7 +31,7 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
     content = req.content
     password = req.password
 
-    pwd_error = verify_password(req.password)
+    pwd_error = verify_password(password)
     if pwd_error:
         return pwd_error
 
@@ -60,7 +60,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     max_devices = req.max_devices
     password = req.password
 
-    pwd_error = verify_password(req.password)
+    pwd_error = verify_password(password)
     if pwd_error:
         return pwd_error
 
