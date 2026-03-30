@@ -1,7 +1,7 @@
 ﻿from pydantic import BaseModel
 
 class ConfigRequest(BaseModel):
-    match_id: str
+    match_id: int
 
 class AuthRequest(BaseModel):
     api_key: str
