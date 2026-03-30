@@ -1,7 +1,7 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .schemas import AdminCreateUserRequest, AdminUpdateUserRequest, AdminCreateConfigRequest
+from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest
 from .database import get_db
 from .models import Config, User, Device, Event
 from .response import success, fail
