@@ -3,6 +3,13 @@ from datetime import datetime
 
 from .database import Base
 
+class Config(Base):
+    __tablename__ = 'configs'
+
+    id = Column(Integer, primary_key=True)
+    match_id = Column(Integer, unique=True, index=True)
+    content = Column(String(1024), nullable=True)
+
 class User(Base):
     __tablename__ = 'users'
 
