@@ -37,6 +37,7 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
 
     existing = db.query(Config).filter(Config.match_id == match_id).first()
     if existing:
+
         return success({
             "status": 1
         }, encrypt=False)
@@ -47,8 +48,8 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
     db.refresh(c)
 
     return success({
-                "status": 1
-            }, encrypt=False)
+        "status": 1
+    }, encrypt=False)
 
 # =========================
 # 创建用户（密钥）
@@ -64,9 +65,20 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     if pwd_error:
         return pwd_error
 
-    existing  = db.query(User).filter(User.api_key == api_key).first()
+    existing = db.query(User).filter(User.api_key == api_key).first()
     if existing:
-        return fail(msg="User already exists")
+        existing.name = name
+        existing.max_devices = max_devices
+        db.commit()
+        db.refresh(existing)
+
+        return success({
+            "id": existing.id,
+            "name": existing.name,
+            "api_key": existing.api_key,
+            "max_devices": existing.max_devices,
+            "created_at": existing.created_at.timestamp()
+        }, encrypt=False)
 
     u = User(name=name, api_key=api_key, max_devices=max_devices)
     db.add(u)
@@ -95,6 +107,7 @@ def list_users(password: str, db: Session = Depends(get_db)):
         "users": [
             {
                 "id": u.id,
+                "name": u.name,
                 "api_key": u.api_key,
                 "max_devices": u.max_devices,
                 "created_at": u.created_at.timestamp(),
