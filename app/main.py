@@ -6,9 +6,9 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from .schemas import AuthRequest, EventRequest
+from .schemas import ConfigRequest, AuthRequest, EventRequest
 from .database import SessionLocal, engine
-from .models import Base, User, Device, Event
+from .models import Base, Config, User, Device, Event
 from .admin import router as admin_router
 from .response import success, fail
 from .sign import generate_sign
@@ -86,6 +86,20 @@ def get_db():
     finally:
         db.close()
 
+@app.post("/get/config")
+def config(req: ConfigRequest, db: Session = Depends(get_db)):
+    match_id = req.match_id
+
+    c = db.query(Config).filter_by(match_id=match_id).first()
+    if not c:
+        return success({
+            "content": ""
+        })
+
+    return success({
+        "content": c.content
+    })
+
 @app.post("/auth")
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
     api_key = req.api_key
@@ -119,10 +133,13 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
 
     db.commit()
 
+    device = db.query(Device).filter_by(user_id=u.id, device_id=device_id).first()
+
     return success({
         "auth_status": 1,
-        "device_id": device_id,
-        "api_key": api_key,
+        "device_id": device.device_id,
+        "api_key": u.api_key,
+        "uid": u.id,
         "t": now
     })
 
