@@ -11,6 +11,7 @@ class EventRequest(BaseModel):
     api_key: str
     device_id: str
     event: str
+    ticketCount: int
 
 class AdminCreateUserRequest(BaseModel):
     password: str

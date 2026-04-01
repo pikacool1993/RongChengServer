@@ -148,6 +148,7 @@ def log_event(req: EventRequest, db: Session = Depends(get_db)):
     api_key = req.api_key
     device_id = req.device_id
     event = req.event
+    count = req.ticketCount
 
     u = db.query(User).filter_by(api_key=api_key).first()
 
@@ -159,6 +160,7 @@ def log_event(req: EventRequest, db: Session = Depends(get_db)):
     db.add(Event(
         user_id=u.id,
         device_id=device_id,
+        ticket_count=count,
         event_type=event
     ))
     db.commit()
