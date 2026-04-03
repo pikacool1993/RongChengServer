@@ -160,7 +160,6 @@ def log_event(req: EventRequest, db: Session = Depends(get_db)):
     db.add(Event(
         user_id=u.id,
         device_id=device_id,
-        ticket_count=count,
         event_type=event
     ))
     db.commit()

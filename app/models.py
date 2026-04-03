@@ -36,5 +36,4 @@ class Event(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     device_id = Column(String(128), index=True)
     event_type = Column(String(32))
-    ticket_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
