@@ -5,10 +5,11 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from datetime import datetime
+from pathlib import Path
 
-from .schemas import ConfigRequest, AuthRequest, EventRequest
+from .schemas import AuthRequest, TaskCreateRequest, TaskUpdateRequest
 from .database import SessionLocal, engine
-from .models import Base, Config, User, Device, Event
+from .models import Base, Config, User, Device, TaskEvent
 from .admin import router as admin_router
 from .response import success, fail
 from .sign import generate_sign
@@ -55,6 +56,9 @@ async def verify_sign(request: Request, call_next):
     body_bytes = await request.body()
     body = json.loads(body_bytes) if body_bytes else {}
 
+    # 统一转字符串（避免格式问题）
+    body = {k: str(v) for k, v in body.items()}
+
     # 校验 sign
     server_sign = generate_sign(body, timestamp)
     if server_sign != sign:
@@ -86,84 +90,129 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/get/config")
-def config(req: ConfigRequest, db: Session = Depends(get_db)):
-    match_id = req.match_id
+@app.get("/match")
+def match(db: Session = Depends(get_db)):
+    try:
+        BASE_DIR = Path(__file__).resolve().parent
+        file_path = BASE_DIR / "resources" / "match.json"
 
-    c = db.query(Config).filter_by(match_id=match_id).first()
-    if not c:
+        if not file_path.exists():
+            return fail(-11, msg="match file not found")
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            item = json.load(f)
+
+        result = {
+            "id": item.get("id"),
+            "team1": item.get("team1_name"),
+            "team2": item.get("team2_name"),
+            "start": item.get("time_s"),
+            "sale_start": item.get("line_s_time")
+        }
+
+        match_id = item.get("id")
+
+        c = db.query(Config).filter_by(match_id=match_id).first()
+        if not c:
+            return success({
+                "data": result
+            })
+
         return success({
-            "content": ""
+            "data": result,
+            "notice": c.content
         })
-
-    return success({
-        "content": c.content
-    })
+    except json.JSONDecodeError:
+        return fail(-12, msg="invalid json format")
+    except Exception as e:
+        return fail(-13, msg=str(e))
 
 @app.post("/auth")
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
-    api_key = req.api_key
-    device_id = req.device_id
     now = int(time.time())
 
-    u = db.query(User).filter_by(api_key=api_key).first()
-    if not u:
+    user = db.query(User).filter_by(api_key=req.api_key).first()
+    if not user:
         return success({
             "auth_status": 2,
             "t": now
         })
 
-    device = db.query(Device).filter_by(user_id=u.id, device_id=device_id).first()
+    device = db.query(Device).filter_by(user_id=user.id, device_id=req.device_id).first()
 
     if not device:
-        device_count = db.query(Device).filter_by(user_id=u.id).count()
+        device_count = db.query(Device).filter_by(user_id=user.id).count()
 
-        if device_count >= u.max_devices:
+        if device_count >= user.max_devices:
             return success({
                 "auth_status": 3,
                 "t": now
             })
 
         db.add(Device(
-            user_id=u.id,
-            device_id=device_id
+            user_id=user.id,
+            device_id=req.device_id
         ))
     else:
         device.last_seen = datetime.now()
 
     db.commit()
 
-    device = db.query(Device).filter_by(user_id=u.id, device_id=device_id).first()
+    device = db.query(Device).filter_by(user_id=user.id, device_id=req.device_id).first()
 
     return success({
         "auth_status": 1,
         "device_id": device.device_id,
-        "api_key": u.api_key,
-        "uid": u.id,
+        "api_key": user.api_key,
+        "uid": user.id,
         "t": now
     })
 
-@app.post("/event")
-def log_event(req: EventRequest, db: Session = Depends(get_db)):
-    api_key = req.api_key
-    device_id = req.device_id
-    event = req.event
-    count = req.ticketCount
-
-    u = db.query(User).filter_by(api_key=api_key).first()
-
-    if not u:
+@app.post("/task/create")
+def task_create(req: TaskCreateRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(api_key=req.api_key).first()
+    if not user:
         return success({
             "status": 2
         })
 
-    db.add(Event(
-        user_id=u.id,
-        device_id=device_id,
-        event_type=event
-    ))
+    task = TaskEvent(
+        user_id=user.id,
+        device_id=req.device_id,
+        match_id=req.match_id
+    )
+
+    db.add(task)
+    db.flush()
+
+    task_id = task.id
     db.commit()
 
+    return success({
+        "status": 1,
+        "task": {
+            "id": task_id
+        }
+    })
+
+@app.post("/task/update")
+def task_update(req: TaskUpdateRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(api_key=req.api_key).first()
+    if not user:
+        return success({
+            "status": 2
+        })
+
+    task = db.query(TaskEvent).filter_by(id=req.task_id, api_key=req.api_key).first()
+    if not task:
+        return success({
+            "status": 3
+        })
+
+    task.status = req.status
+    task.ticket_count = req.ticket_count
+
+    db.commit()
     return success({
         "status": 1
     })
