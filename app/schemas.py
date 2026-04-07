@@ -1,5 +1,9 @@
 ﻿from pydantic import BaseModel
 
+class MatchQueryRequest(BaseModel):
+    api_key: str
+    match_id: str
+
 class AuthRequest(BaseModel):
     api_key: str
     device_id: str

@@ -1,5 +1,6 @@
 import time
 import json
+import httpx
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from pathlib import Path
 
-from .schemas import AuthRequest, TaskCreateRequest, TaskUpdateRequest
+from .schemas import MatchQueryRequest, AuthRequest, TaskCreateRequest, TaskUpdateRequest
 from .database import SessionLocal, engine
 from .models import Base, Config, User, Device, TaskEvent
 from .admin import router as admin_router
@@ -90,7 +91,7 @@ def get_db():
     finally:
         db.close()
 
-@app.get("/match")
+@app.get("/match/config")
 def match(db: Session = Depends(get_db)):
     try:
         BASE_DIR = Path(__file__).resolve().parent
@@ -126,6 +127,19 @@ def match(db: Session = Depends(get_db)):
         return fail(-12, msg="invalid json format")
     except Exception as e:
         return fail(-13, msg=str(e))
+
+@app.post("/match/detail")
+def match_detail(req: MatchQueryRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(api_key=req.api_key).first()
+    if not user:
+        return success({
+            "status": 2,
+        })
+
+    return success({
+        "status": 1,
+        "detail": ""
+    })
 
 @app.post("/auth")
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
