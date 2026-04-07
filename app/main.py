@@ -91,6 +91,30 @@ def get_db():
     finally:
         db.close()
 
+async def request_match_detail(match_id: str):
+    url = "https://fccdn1.k4n.cc/fc/wx_api/v1/MiniApp/getMatchInfo?lid2=255143"
+    headers = {
+        "Authorization" : "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1aWQiOjI1NTE0Mywib2lkIjoiY2IwZDRiYjA2ODNhZmVmMWFiOGNlMzE4ZjdkNTZlMzMiLCJsaWQiOjAsInNpZGUiOiJ3eF9hcGkiLCJhdWQiOiIiLCJleHAiOjE3NzU2MzkyMTAsImlhdCI6MTc3NTU2NzIxMCwiaXNzIjoiIiwianRpIjoiYTE4Njc3NTRhMmUyOThhZGVhOWNkZjViM2NjNzBkMTciLCJuYmYiOjE3NzU1NjcyMTAsInN1YiI6IiJ9.vve1yTdwrdsvBjU3HEMxeBM_KJ5N7eQLGxppEEKnoes",
+        "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254181d) XWEB/19201",
+        "xweb_xhr" : "1",
+        "Content-Type" : "application/json;charset:utf-8;",
+        "Accept" : "*/*",
+        "Sec-Fetch-Site" : "cross-site",
+        "Sec-Fetch-Mode" : "cors",
+        "Sec-Fetch-Dest" : "empty",
+        "Referer" : "https://servicewechat.com/wxffa42ecd6c0e693d/78/page-frame.html",
+        "Accept-Encoding" : "gzip, deflate, br",
+        "Accept-Language" : "zh-CN,zh;q=0.9"
+    }
+    body = {
+        "id": match_id
+    }
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(url, json=body, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+
 @app.get("/match/config")
 def match(db: Session = Depends(get_db)):
     try:
@@ -129,17 +153,28 @@ def match(db: Session = Depends(get_db)):
         return fail(-13, msg=str(e))
 
 @app.post("/match/detail")
-def match_detail(req: MatchQueryRequest, db: Session = Depends(get_db)):
+async def match_detail(req: MatchQueryRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter_by(api_key=req.api_key).first()
     if not user:
         return success({
             "status": 2,
+            "detail": {},
+            "error": "user not found"
         })
 
-    return success({
-        "status": 1,
-        "detail": ""
-    })
+    try:
+        detail = await request_match_detail(req.match_id)
+        return success({
+            "status": 1,
+            "detail": detail
+        })
+
+    except Exception as e:
+        return success({
+            "status": -1,
+            "detail": {},
+            "error": str(e)
+        })
 
 @app.post("/auth")
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
