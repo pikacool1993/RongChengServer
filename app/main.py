@@ -1,5 +1,6 @@
 import time
 import json
+
 import httpx
 import smtplib
 from fastapi import FastAPI, Request, Depends, BackgroundTasks, HTTPException
@@ -8,6 +9,8 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from datetime import datetime
 from pathlib import Path
+from email.header import Header
+from email.utils import formataddr
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -284,17 +287,17 @@ def task_order(req: TaskOrderRequest, background_tasks: BackgroundTasks, db: Ses
 def send_email(target_mail: str, mail_content: str):
     try:
         sender_name = "凤凰山票务"
-        sender_email = "cdrcr12@163.com"
-        sender_password = "FCwgCM55FNm5SwZZ"
+        sender_email = "fhspw028@qq.com"
+        sender_password = "frbhcmlpddwejcfc"
 
-        smtp_server = "smtp.163.com"
+        smtp_server = "smtp.qq.com"
         smtp_port = 465  # SSL
 
         # ====== 构建邮件 ======
         msg = MIMEMultipart()
-        msg["From"] = f"{sender_name} <{sender_email}>"
+        msg["From"] = formataddr((Header(sender_name, "utf-8").encode(), sender_email))
         msg["To"] = target_mail
-        msg["Subject"] = "购票成功"
+        msg["Subject"] = Header("购票成功", "utf-8")
 
         body = MIMEText(mail_content, "html", "utf-8")
         msg.attach(body)

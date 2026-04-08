@@ -1,9 +1,10 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest
 from .database import get_db
-from .models import Config, User, Device
+from .models import Config, User, Device, Order
 from .response import success, fail
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -25,7 +26,7 @@ def verify_password(password: str):
 # =========================
 # 创建更新配置
 # =========================
-@router.post("/create/config")
+@router.post("/match/config")
 def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
     match_id = req.match_id
     content = req.content
@@ -37,6 +38,9 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
 
     existing = db.query(Config).filter(Config.match_id == match_id).first()
     if existing:
+        existing.content = content
+        db.commit()
+        db.refresh(existing)
 
         return success({
             "status": 1
@@ -45,7 +49,6 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
     c = Config(match_id=match_id, content=content)
     db.add(c)
     db.commit()
-    db.refresh(c)
 
     return success({
         "status": 1
@@ -174,6 +177,8 @@ def get_tickets_count(api_key: str, password: str, db: Session = Depends(get_db)
     if not u:
         return fail(msg="User not found")
 
+    total_tickets = db.query(func.sum(Order.ticket_count)).filter(Order.user_id == u.id).scalar() or 0
+
     return success({
-        "tickets_count": 0
+        "tickets_count": total_tickets
     }, encrypt=False)
