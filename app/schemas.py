@@ -8,16 +8,20 @@ class AuthRequest(BaseModel):
     api_key: str
     device_id: str
 
-class TaskCreateRequest(BaseModel):
+class TaskCheckRequest(BaseModel):
     api_key: str
     device_id: str
-    match_id: int
 
-class TaskUpdateRequest(BaseModel):
+class TaskOrderRequest(BaseModel):
     api_key: str
-    task_id: int
-    status: int
+    device_id: str
+    email: str
+    email_content: str
+    match_id: int
     ticket_count: int
+    order_names: str
+    order_region: str
+    order_price: str
 
 class AdminCreateUserRequest(BaseModel):
     password: str

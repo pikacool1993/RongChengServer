@@ -29,14 +29,16 @@ class Device(Base):
     first_seen = Column(DateTime, default=datetime.now)
     last_seen = Column(DateTime, default=datetime.now)
 
-class TaskEvent(Base):
-    __tablename__ = 'task_events'
+class Order(Base):
+    __tablename__ = 'orders'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     device_id = Column(String(128), index=True)
+    order_names = Column(String(128), nullable=True)
+    order_region = Column(String(128), nullable=True)
+    order_price = Column(String(128), nullable=True)
     match_id = Column(Integer, index=True)
-    status = Column(Integer, default=0)
     ticket_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
 

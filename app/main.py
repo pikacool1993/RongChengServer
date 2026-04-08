@@ -1,16 +1,19 @@
 import time
 import json
 import httpx
-from fastapi import FastAPI, Request, Depends, HTTPException
+import smtplib
+from fastapi import FastAPI, Request, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from datetime import datetime
 from pathlib import Path
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-from .schemas import MatchQueryRequest, AuthRequest, TaskCreateRequest, TaskUpdateRequest
+from .schemas import MatchQueryRequest, AuthRequest, TaskCheckRequest, TaskOrderRequest
 from .database import SessionLocal, engine
-from .models import Base, Config, User, Device, TaskEvent
+from .models import Base, Config, User, Device, Order
 from .admin import router as admin_router
 from .response import success, fail
 from .sign import generate_sign
@@ -118,8 +121,8 @@ async def request_match_detail(match_id: str):
 @app.get("/match/config")
 def match(db: Session = Depends(get_db)):
     try:
-        BASE_DIR = Path(__file__).resolve().parent
-        file_path = BASE_DIR / "resources" / "match.json"
+        base_dir = Path(__file__).resolve().parent
+        file_path = base_dir / "resources" / "match.json"
 
         if not file_path.exists():
             return fail(-11, msg="match file not found")
@@ -127,24 +130,24 @@ def match(db: Session = Depends(get_db)):
         with open(file_path, "r", encoding="utf-8") as f:
             item = json.load(f)
 
-        result = {
+        info = {
             "id": item.get("id"),
             "team1": item.get("team1_name"),
             "team2": item.get("team2_name"),
             "start": item.get("time_s"),
             "sale_start": item.get("line_s_time")
         }
-
         match_id = item.get("id")
 
         c = db.query(Config).filter_by(match_id=match_id).first()
         if not c:
             return success({
-                "data": result
+                "info": info,
+                "notice": ""
             })
 
         return success({
-            "data": result,
+            "info": info,
             "notice": c.content
         })
     except json.JSONDecodeError:
@@ -154,36 +157,39 @@ def match(db: Session = Depends(get_db)):
 
 @app.post("/match/detail")
 async def match_detail(req: MatchQueryRequest, db: Session = Depends(get_db)):
+    now = int(time.time())
     user = db.query(User).filter_by(api_key=req.api_key).first()
     if not user:
         return success({
             "status": 2,
-            "detail": {},
-            "error": "user not found"
+            "desc": "user not found",
+            "t": now
         })
 
     try:
         detail = await request_match_detail(req.match_id)
         return success({
             "status": 1,
-            "detail": detail
+            "detail": detail,
+            "desc": "ok",
+            "t": now
         })
 
     except Exception as e:
         return success({
             "status": -1,
-            "detail": {},
-            "error": str(e)
+            "desc": str(e),
+            "t": now
         })
 
 @app.post("/auth")
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
     now = int(time.time())
-
     user = db.query(User).filter_by(api_key=req.api_key).first()
     if not user:
         return success({
-            "auth_status": 2,
+            "status": 2,
+            "desc": "user not found",
             "t": now
         })
 
@@ -191,10 +197,10 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
 
     if not device:
         device_count = db.query(Device).filter_by(user_id=user.id).count()
-
         if device_count >= user.max_devices:
             return success({
-                "auth_status": 3,
+                "status": 3,
+                "desc": "device limit reached",
                 "t": now
             })
 
@@ -210,58 +216,95 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
     device = db.query(Device).filter_by(user_id=user.id, device_id=req.device_id).first()
 
     return success({
-        "auth_status": 1,
-        "device_id": device.device_id,
+        "status": 1,
         "api_key": user.api_key,
-        "uid": user.id,
+        "device_id": device.device_id,
+        "desc": "ok",
         "t": now
     })
 
-@app.post("/task/create")
-def task_create(req: TaskCreateRequest, db: Session = Depends(get_db)):
+@app.post("/task/check")
+def task_check(req: TaskCheckRequest, db: Session = Depends(get_db)):
+    now = int(time.time())
     user = db.query(User).filter_by(api_key=req.api_key).first()
     if not user:
         return success({
-            "status": 2
+            "status": 2,
+            "desc": "user not found",
+            "t": now
         })
 
-    task = TaskEvent(
+    device = db.query(Device).filter_by(user_id=user.id, device_id=req.device_id).first()
+    if not device:
+        return success({
+            "status": 3,
+            "desc": "refuse",
+            "t": now
+        })
+    else:
+        return success({
+            "status": 1,
+            "api_key": user.api_key,
+            "device_id": device.device_id,
+            "desc": "ok",
+            "t": now
+        })
+
+@app.post("/task/order")
+def task_order(req: TaskOrderRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    now = int(time.time())
+    user = db.query(User).filter_by(api_key=req.api_key).first()
+    if not user:
+        return success({
+            "status": 2,
+            "desc": "user not found",
+            "t": now
+        })
+
+    db.add(Order(
         user_id=user.id,
         device_id=req.device_id,
-        match_id=req.match_id
-    )
-
-    db.add(task)
-    db.flush()
-
-    task_id = task.id
+        match_id=req.match_id,
+        ticket_count=req.ticket_count,
+        order_names=req.order_names,
+        order_region=req.order_region,
+        order_price=req.order_price
+    ))
     db.commit()
+
+    if req.email and req.email.strip():
+        background_tasks.add_task(send_email, req.email, req.email_content)
 
     return success({
         "status": 1,
-        "task": {
-            "id": task_id
-        }
+        "desc": "ok",
+        "t": now
     })
 
-@app.post("/task/update")
-def task_update(req: TaskUpdateRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter_by(api_key=req.api_key).first()
-    if not user:
-        return success({
-            "status": 2
-        })
+def send_email(target_mail: str, mail_content: str):
+    try:
+        sender_name = "凤凰山票务"
+        sender_email = "cdrcr12@163.com"
+        sender_password = "FCwgCM55FNm5SwZZ"
 
-    task = db.query(TaskEvent).filter_by(id=req.task_id, api_key=req.api_key).first()
-    if not task:
-        return success({
-            "status": 3
-        })
+        smtp_server = "smtp.163.com"
+        smtp_port = 465  # SSL
 
-    task.status = req.status
-    task.ticket_count = req.ticket_count
+        # ====== 构建邮件 ======
+        msg = MIMEMultipart()
+        msg["From"] = f"{sender_name} <{sender_email}>"
+        msg["To"] = target_mail
+        msg["Subject"] = "购票成功"
 
-    db.commit()
-    return success({
-        "status": 1
-    })
+        body = MIMEText(mail_content, "html", "utf-8")
+        msg.attach(body)
+
+        # ====== 发送 ======
+        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, [target_mail], msg.as_string())
+        print("邮件发送成功")
+    except Exception as e:
+        print(f"邮件发送失败: {e}")
+
+
