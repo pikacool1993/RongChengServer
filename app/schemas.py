@@ -1,16 +1,27 @@
 ﻿from pydantic import BaseModel
 
-class ConfigRequest(BaseModel):
-    match_id: int
+class MatchQueryRequest(BaseModel):
+    api_key: str
+    match_id: str
 
 class AuthRequest(BaseModel):
     api_key: str
     device_id: str
 
-class EventRequest(BaseModel):
+class TaskCheckRequest(BaseModel):
     api_key: str
     device_id: str
-    event: str
+
+class TaskOrderRequest(BaseModel):
+    api_key: str
+    device_id: str
+    email: str
+    email_content: str
+    match_id: int
+    ticket_count: int
+    order_names: str
+    order_region: str
+    order_price: str
 
 class AdminCreateUserRequest(BaseModel):
     password: str

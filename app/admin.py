@@ -1,9 +1,10 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest
 from .database import get_db
-from .models import Config, User, Device, Event
+from .models import Config, User, Device, Order
 from .response import success, fail
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -25,7 +26,7 @@ def verify_password(password: str):
 # =========================
 # 创建更新配置
 # =========================
-@router.post("/create/config")
+@router.post("/match/config")
 def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
     match_id = req.match_id
     content = req.content
@@ -37,6 +38,9 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
 
     existing = db.query(Config).filter(Config.match_id == match_id).first()
     if existing:
+        existing.content = content
+        db.commit()
+        db.refresh(existing)
 
         return success({
             "status": 1
@@ -45,7 +49,6 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
     c = Config(match_id=match_id, content=content)
     db.add(c)
     db.commit()
-    db.refresh(c)
 
     return success({
         "status": 1
@@ -94,6 +97,23 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     }, encrypt=False)
 
 # =========================
+# 删除用户（密钥）
+# =========================
+@router.delete("/user/delete")
+def delete_user(api_key: str, password: str, db: Session = Depends(get_db)):
+    pwd_error = verify_password(password)
+    if pwd_error:
+        return pwd_error
+
+    u = db.query(User).filter(User.api_key == api_key).first()
+    if not u:
+        return fail(msg="User not found")
+
+    db.delete(u)
+    db.commit()
+    return success({}, encrypt=False)
+
+# =========================
 # 查看所有用户（密钥）
 # =========================
 @router.get("/user/list")
@@ -117,26 +137,9 @@ def list_users(password: str, db: Session = Depends(get_db)):
     }, encrypt=False)
 
 # =========================
-# 删除用户（密钥）
-# =========================
-@router.delete("/user/{api_key}")
-def delete_user(api_key: str, password: str, db: Session = Depends(get_db)):
-    pwd_error = verify_password(password)
-    if pwd_error:
-        return pwd_error
-
-    u = db.query(User).filter(User.api_key == api_key).first()
-    if not u:
-        return fail(msg="User not found")
-
-    db.delete(u)
-    db.commit()
-    return success({}, encrypt=False)
-
-# =========================
 # 查看某个用户的设备
 # =========================
-@router.get("/user/{api_key}/devices")
+@router.get("/user/devices")
 def get_user_devices(api_key: str, password: str, db: Session = Depends(get_db)):
     pwd_error = verify_password(password)
     if pwd_error:
@@ -162,51 +165,9 @@ def get_user_devices(api_key: str, password: str, db: Session = Depends(get_db))
     }, encrypt=False)
 
 # =========================
-# 查看某个用户的事件
+# api_key任务出票统计
 # =========================
-@router.get("/user/{api_key}/events")
-def get_user_events(api_key: str, password: str, db: Session = Depends(get_db)):
-    pwd_error = verify_password(password)
-    if pwd_error:
-        return pwd_error
-
-    u = db.query(User).filter(User.api_key == api_key).first()
-    if not u:
-        return fail(msg="User not found")
-
-    events = db.query(Event).filter(Event.user_id == u.id).all()
-    return success({
-        "user": api_key,
-        "event_count": len(events),
-        "events": [
-            {
-                "id": e.id,
-                "device_id": e.device_id,
-                "event_type": e.event_type,
-                "created_at": e.created_at.timestamp(),
-            }
-            for e in events
-        ],
-    }, encrypt=False)
-
-# =========================
-# 全局购买统计
-# =========================
-@router.get("/stats/tickets_count")
-def get_tickets_count(password: str, db: Session = Depends(get_db)):
-    pwd_error = verify_password(password)
-    if pwd_error:
-        return pwd_error
-
-    count = db.query(Event).filter(Event.event_type == "ticket_buy").count()
-    return success({
-        "tickets_count": count
-    }, encrypt=False)
-
-# =========================
-# api_key购买统计
-# =========================
-@router.get("/stats/{api_key}/tickets_count")
+@router.get("/task/tickets_count")
 def get_tickets_count(api_key: str, password: str, db: Session = Depends(get_db)):
     pwd_error = verify_password(password)
     if pwd_error:
@@ -216,7 +177,8 @@ def get_tickets_count(api_key: str, password: str, db: Session = Depends(get_db)
     if not u:
         return fail(msg="User not found")
 
-    count = db.query(Event).filter(Event.user_id == u.id).count()
+    total_tickets = db.query(func.sum(Order.ticket_count)).filter(Order.user_id == u.id).scalar() or 0
+
     return success({
-        "tickets_count": count
+        "tickets_count": total_tickets
     }, encrypt=False)
