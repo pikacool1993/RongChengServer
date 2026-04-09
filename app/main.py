@@ -102,9 +102,21 @@ def get_db():
         db.close()
 
 async def request_match_detail(match_id: str):
-    url = "https://fccdn1.k4n.cc/fc/wx_api/v1/MiniApp/getMatchInfo?lid2=255143"
+    match_api_base_url = os.getenv(
+        "MATCH_API_BASE_URL",
+        "https://fccdn1.k4n.cc/fc/wx_api/v1/MiniApp/getMatchInfo",
+    )
+    match_api_lid2 = os.getenv("MATCH_API_LID2")
+    match_api_bearer = os.getenv("MATCH_API_BEARER")
+
+    if not match_api_lid2:
+        raise RuntimeError("环境变量 MATCH_API_LID2 未设置。")
+    if not match_api_bearer:
+        raise RuntimeError("环境变量 MATCH_API_BEARER 未设置。")
+
+    url = f"{match_api_base_url}?lid2={match_api_lid2}"
     headers = {
-        "Authorization" : "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1aWQiOjI1NTE0Mywib2lkIjoiY2IwZDRiYjA2ODNhZmVmMWFiOGNlMzE4ZjdkNTZlMzMiLCJsaWQiOjAsInNpZGUiOiJ3eF9hcGkiLCJhdWQiOiIiLCJleHAiOjE3NzU2MzkyMTAsImlhdCI6MTc3NTU2NzIxMCwiaXNzIjoiIiwianRpIjoiYTE4Njc3NTRhMmUyOThhZGVhOWNkZjViM2NjNzBkMTciLCJuYmYiOjE3NzU1NjcyMTAsInN1YiI6IiJ9.vve1yTdwrdsvBjU3HEMxeBM_KJ5N7eQLGxppEEKnoes",
+        "Authorization": f"Bearer {match_api_bearer}",
         "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254181d) XWEB/19201",
         "xweb_xhr" : "1",
         "Content-Type" : "application/json;charset:utf-8;",
