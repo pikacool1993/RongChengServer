@@ -1,8 +1,17 @@
 import hashlib
 import json
+import os
 from typing import Dict, Any
 
-SECRET = "he93GjVTFEFWrUU4"
+from .env import load_env
+
+load_env()
+
+SECRET = os.getenv("SIGN_SECRET")
+if not SECRET:
+    raise RuntimeError(
+        "环境变量 SIGN_SECRET 未设置。请设置签名密钥（建议 >= 16 位随机字符串）。"
+    )
 
 def md5(text: str) -> str:
     return hashlib.md5(text.encode("utf-8")).hexdigest()

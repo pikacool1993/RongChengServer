@@ -1,4 +1,6 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿import os
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -6,20 +8,24 @@ from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest
 from .database import get_db
 from .models import Config, User, Device, Order
 from .response import success, fail
+from .env import load_env
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # =========================
 # 全局常量
 # =========================
-FIXED_PASSWORD: str = "VvHw5Gi5zFvfCRpD"
+load_env()
+ADMIN_PASSWORD: str | None = os.getenv("ADMIN_PASSWORD")
 
 # =========================
 # 公共工具函数（消除重复代码）
 # =========================
 def verify_password(password: str):
     """验证管理员密码"""
-    if password != FIXED_PASSWORD:
+    if not ADMIN_PASSWORD:
+        return fail(msg="Admin password not configured")
+    if password != ADMIN_PASSWORD:
         return fail(msg="Wrong password")
     return None
 

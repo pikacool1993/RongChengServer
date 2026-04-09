@@ -27,7 +27,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: mysql+pymysql://root:123456@db:3306/rc_db
+      DATABASE_URL: ${DATABASE_URL}
 
 volumes:
   mysql_data:

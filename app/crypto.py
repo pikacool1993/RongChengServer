@@ -1,11 +1,30 @@
 import json
 import base64
+import os
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
-# AES-256 + 16字节IV
-AES_KEY = b"b8c3f2e9a6d47c5b1e9032f4d8a1c6e2"
-AES_IV  = b"9d4a1f7c2e6b8a03"
+from .env import load_env
+
+load_env()
+
+def _must_get_bytes(name: str) -> bytes:
+    val = os.getenv(name)
+    if not val:
+        raise RuntimeError(f"环境变量 {name} 未设置。")
+    return val.encode("utf-8")
+
+
+# 约定：直接用 UTF-8 字符串作为 key/iv（长度必须匹配 AES 要求）
+AES_KEY = _must_get_bytes("AES_KEY")
+AES_IV = _must_get_bytes("AES_IV")
+
+if len(AES_KEY) not in (16, 24, 32):
+    raise RuntimeError(
+        f"AES_KEY 长度不合法：{len(AES_KEY)}。必须是 16/24/32 字节（对应 AES-128/192/256）。"
+    )
+if len(AES_IV) != 16:
+    raise RuntimeError(f"AES_IV 长度不合法：{len(AES_IV)}。必须是 16 字节（CBC IV）。")
 
 def aes_encrypt(data: dict) -> str:
     """

@@ -1,5 +1,6 @@
 import time
 import json
+import os
 
 import httpx
 import smtplib
@@ -14,12 +15,15 @@ from email.utils import formataddr
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+from .env import load_env
 from .schemas import MatchQueryRequest, AuthRequest, TaskCheckRequest, TaskOrderRequest
 from .database import SessionLocal, engine
 from .models import Base, Config, User, Device, Order
 from .admin import router as admin_router
 from .response import success, fail
 from .sign import generate_sign
+
+load_env()
 
 Base.metadata.create_all(bind=engine)
 
@@ -286,12 +290,16 @@ def task_order(req: TaskOrderRequest, background_tasks: BackgroundTasks, db: Ses
 
 def send_email(target_mail: str, mail_content: str):
     try:
-        sender_name = "凤凰山票务"
-        sender_email = "fhspw028@qq.com"
-        sender_password = "frbhcmlpddwejcfc"
+        sender_name = os.getenv("SMTP_SENDER_NAME", "凤凰山票务")
+        sender_email = os.getenv("SMTP_USER")
+        sender_password = os.getenv("SMTP_PASSWORD")
 
-        smtp_server = "smtp.qq.com"
-        smtp_port = 465  # SSL
+        smtp_server = os.getenv("SMTP_HOST", "smtp.qq.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "465"))  # SSL
+
+        if not sender_email or not sender_password:
+            print("SMTP 未配置（缺少 SMTP_USER/SMTP_PASSWORD），已跳过发信。")
+            return
 
         # ====== 构建邮件 ======
         msg = MIMEMultipart()
