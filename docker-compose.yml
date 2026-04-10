@@ -20,14 +20,14 @@ services:
 
   api:
     build: .
+    env_file:
+      - .env
     container_name: cdrc_app
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
 
 volumes:
   mysql_data:
