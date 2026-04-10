@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <div class="card border-0 shadow-soft">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+        <div>
+          <div class="fw-semibold fs-5">订单</div>
+          <div class="text-muted small">总数：{{ total }}，页码：{{ page }}，票数合计：{{ tickets_sum }}</div>
+        </div>
+      </div>
+
+    <form class="row g-2 mb-3" method="get" action="/admin-ui/orders">
+      <div class="col-md-3">
+        <input class="form-control" name="api_key" placeholder="api_key" value="{{ filters.api_key }}">
+      </div>
+      <div class="col-md-3">
+        <input class="form-control" name="device_id" placeholder="device_id" value="{{ filters.device_id }}">
+      </div>
+      <div class="col-md-2">
+        <input class="form-control" name="match_id" placeholder="match_id" value="{{ filters.match_id }}">
+      </div>
+      <div class="col-md-2">
+        <input class="form-control" name="page_size" type="number" min="1" max="200" value="{{ page_size }}">
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-primary" type="submit">筛选</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>API Key</th>
+            <th>Device ID</th>
+            <th>Match</th>
+            <th>Tickets</th>
+            <th>Names</th>
+            <th>Region</th>
+            <th>Price</th>
+            <th>Created</th>
+            <th class="text-end">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td class="text-muted">{{ o.id }}</td>
+            <td><code>{{ o.api_key }}</code></td>
+            <td><code>{{ o.device_id }}</code></td>
+            <td>{{ o.match_id }}</td>
+            <td class="fw-semibold">{{ o.ticket_count }}</td>
+            <td>{{ o.order_names }}</td>
+            <td>{{ o.order_region }}</td>
+            <td>{{ o.order_price }}</td>
+            <td class="text-muted">{{ o.created_at }}</td>
+            <td class="text-end">
+              <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
+                    onsubmit="return confirm('确认删除该订单？');">
+                <input type="hidden" name="next"
+                       value="/admin-ui/orders?api_key={{ filters.api_key }}&device_id={{ filters.device_id }}&match_id={{ filters.match_id }}&page={{ page }}&page_size={{ page_size }}">
+                <button class="btn btn-outline-danger btn-sm" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex gap-2">
+      {% if page > 1 %}
+        <a class="btn btn-outline-secondary btn-sm"
+           href="/admin-ui/orders?api_key={{ filters.api_key }}&device_id={{ filters.device_id }}&match_id={{ filters.match_id }}&page={{ page - 1 }}&page_size={{ page_size }}">上一页</a>
+      {% endif %}
+      {% if (page * page_size) < total %}
+        <a class="btn btn-outline-secondary btn-sm"
+           href="/admin-ui/orders?api_key={{ filters.api_key }}&device_id={{ filters.device_id }}&match_id={{ filters.match_id }}&page={{ page + 1 }}&page_size={{ page_size }}">下一页</a>
+      {% endif %}
+    </div>
+    </div>
+  </div>
+{% endblock %}
+
