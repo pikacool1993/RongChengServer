@@ -1,25 +1,31 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿import os
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest
+from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest, AdminUpdateUserRequest
 from .database import get_db
 from .models import Config, User, Device, Order
 from .response import success, fail
+from .env import load_env
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # =========================
 # 全局常量
 # =========================
-FIXED_PASSWORD: str = "VvHw5Gi5zFvfCRpD"
+load_env()
+ADMIN_PASSWORD: str | None = os.getenv("ADMIN_PASSWORD")
 
 # =========================
 # 公共工具函数（消除重复代码）
 # =========================
 def verify_password(password: str):
     """验证管理员密码"""
-    if password != FIXED_PASSWORD:
+    if not ADMIN_PASSWORD:
+        return fail(msg="Admin password not configured")
+    if password != ADMIN_PASSWORD:
         return fail(msg="Wrong password")
     return None
 
@@ -114,6 +120,39 @@ def delete_user(api_key: str, password: str, db: Session = Depends(get_db)):
     return success({}, encrypt=False)
 
 # =========================
+# 更新用户（按 api_key）
+# =========================
+@router.put("/user/update")
+def update_user(req: AdminUpdateUserRequest, db: Session = Depends(get_db)):
+    pwd_error = verify_password(req.password)
+    if pwd_error:
+        return pwd_error
+
+    u = db.query(User).filter(User.api_key == req.api_key).first()
+    if not u:
+        return fail(msg="User not found")
+
+    if req.name is not None:
+        u.name = req.name
+    if req.max_devices is not None:
+        u.max_devices = req.max_devices
+    u.updated_at = func.now()
+    db.commit()
+    db.refresh(u)
+
+    return success(
+        {
+            "id": u.id,
+            "name": u.name,
+            "api_key": u.api_key,
+            "max_devices": u.max_devices,
+            "created_at": u.created_at.timestamp(),
+            "updated_at": u.updated_at.timestamp() if u.updated_at else None,
+        },
+        encrypt=False,
+    )
+
+# =========================
 # 查看所有用户（密钥）
 # =========================
 @router.get("/user/list")
@@ -131,6 +170,7 @@ def list_users(password: str, db: Session = Depends(get_db)):
                 "api_key": u.api_key,
                 "max_devices": u.max_devices,
                 "created_at": u.created_at.timestamp(),
+                "updated_at": u.updated_at.timestamp() if u.updated_at else None,
             }
             for u in users
         ]
@@ -182,3 +222,69 @@ def get_tickets_count(api_key: str, password: str, db: Session = Depends(get_db)
     return success({
         "tickets_count": total_tickets
     }, encrypt=False)
+
+
+# =========================
+# 订单列表（支持筛选 + 分页）
+# =========================
+@router.get("/orders/list")
+def list_orders(
+    password: str,
+    api_key: str | None = None,
+    device_id: str | None = None,
+    match_id: int | None = None,
+    page: int = 1,
+    page_size: int = 50,
+    db: Session = Depends(get_db),
+):
+    pwd_error = verify_password(password)
+    if pwd_error:
+        return pwd_error
+
+    if page < 1:
+        page = 1
+    if page_size < 1:
+        page_size = 1
+    if page_size > 200:
+        page_size = 200
+
+    q = db.query(Order, User).join(User, User.id == Order.user_id)
+
+    if api_key:
+        q = q.filter(User.api_key == api_key)
+    if device_id:
+        q = q.filter(Order.device_id == device_id)
+    if match_id is not None:
+        q = q.filter(Order.match_id == match_id)
+
+    total = q.count()
+    items = (
+        q.order_by(Order.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return success(
+        {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "orders": [
+                {
+                    "id": o.id,
+                    "api_key": u.api_key,
+                    "user_id": o.user_id,
+                    "device_id": o.device_id,
+                    "match_id": o.match_id,
+                    "ticket_count": o.ticket_count,
+                    "order_names": o.order_names,
+                    "order_region": o.order_region,
+                    "order_price": o.order_price,
+                    "created_at": o.created_at.timestamp() if o.created_at else None,
+                }
+                for (o, u) in items
+            ],
+        },
+        encrypt=False,
+    )

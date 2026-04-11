@@ -29,6 +29,12 @@ class AdminCreateUserRequest(BaseModel):
     api_key: str
     max_devices: int
 
+class AdminUpdateUserRequest(BaseModel):
+    password: str
+    api_key: str
+    name: str | None = None
+    max_devices: int | None = None
+
 class AdminCreateConfigRequest(BaseModel):
     password: str
     content: str

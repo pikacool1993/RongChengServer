@@ -20,14 +20,14 @@ services:
 
   api:
     build: .
+    env_file:
+      - .env
     container_name: cdrc_app
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: mysql+pymysql://root:123456@db:3306/rc_db
 
 volumes:
   mysql_data:

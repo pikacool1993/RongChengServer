@@ -1,0 +1,71 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card border-0 shadow-soft">
+        <div class="card-body">
+        <div class="fw-semibold fs-5 mb-3">用户</div>
+        <div class="text-muted small mb-3">创建或更新用户（同 api_key 会覆盖更新）。</div>
+        <form class="row g-2" method="post" action="/admin-ui/users/create">
+          <div class="col-md-4">
+            <input class="form-control" name="name" placeholder="name（可空）">
+          </div>
+          <div class="col-md-4">
+            <input class="form-control" name="api_key" placeholder="api_key" required>
+          </div>
+          <div class="col-md-2">
+            <input class="form-control" name="max_devices" type="number" min="1" value="1">
+          </div>
+          <div class="col-md-2 d-grid">
+            <button class="btn btn-primary" type="submit">保存</button>
+          </div>
+        </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card border-0 shadow-soft">
+        <div class="card-body">
+        <div class="fw-semibold mb-3">用户列表</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>API Key</th>
+                <th>Max Devices</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th class="text-end">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in users %}
+              <tr>
+                <td class="text-muted">{{ u.id }}</td>
+                <td>{{ u.name or "" }}</td>
+                <td><code>{{ u.api_key }}</code></td>
+                <td>{{ u.max_devices }}</td>
+                <td class="text-muted">{{ u.created_at }}</td>
+                <td class="text-muted">{{ u.updated_at }}</td>
+                <td class="text-end">
+                  <a class="btn btn-outline-secondary btn-sm" href="/admin-ui/users/{{ u.api_key }}">编辑</a>
+                  <a class="btn btn-outline-info btn-sm" href="/admin-ui/users/{{ u.api_key }}/devices">设备</a>
+                  <form method="post" action="/admin-ui/users/{{ u.api_key }}/delete" class="d-inline"
+                        onsubmit="return confirm('确认删除用户？');">
+                    <button class="btn btn-outline-danger btn-sm" type="submit">删除</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
