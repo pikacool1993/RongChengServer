@@ -1,16 +1,16 @@
 {
-  "id": 74,
+  "id": 76,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
   "team1_name": "成都蓉城",
-  "team2_color": "rgba(230, 0, 18, 1)",
-  "team2_id": 54,
-  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024521/青岛西海岸.png",
-  "team2_name": "青岛西海岸",
-  "time_e": 1775223300,
-  "time_s": 1775216100,
+  "team2_color": "rgba(255, 208, 0, 1)",
+  "team2_id": 55,
+  "team2_logo": "https://fcscdn3.k4n.cc/upload/a11/jpeg/2025218/云南玉昆1.jpg",
+  "team2_name": "云南玉昆",
+  "time_e": 1776778500,
+  "time_s": 1776771300,
   "sale": 1,
-  "line_s_time": 1775023200,
-  "line_e_time": 1775194500
+  "line_s_time": 1776578400,
+  "line_e_time": 1776749700
 }
