@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ..database import get_db
 from ..env import load_env
-from ..models import Device, Order, User
+from ..models import Config, Device, Order, User
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +291,102 @@ def order_delete(request: Request, order_id: int, next: str = Form("/admin-ui/or
         db.delete(o)
         db.commit()
     return RedirectResponse(url=next or "/admin-ui/orders", status_code=302)
+
+
+# =========================
+# configs（赛事/公告配置）
+# =========================
+@router.get("/admin-ui/configs", response_class=HTMLResponse)
+def configs_page(request: Request, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/configs")
+
+    rows = db.query(Config).order_by(Config.match_id.asc()).all()
+    return templates.TemplateResponse("admin/configs.html", {"request": request, "configs": rows})
+
+
+@router.post("/admin-ui/configs/create")
+def configs_create(
+    request: Request,
+    match_id: int = Form(...),
+    content: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/configs")
+
+    text = (content or "")[:1024]
+    existing = db.query(Config).filter(Config.match_id == match_id).first()
+    if existing:
+        existing.content = text
+        db.commit()
+    else:
+        db.add(Config(match_id=match_id, content=text))
+        db.commit()
+    return RedirectResponse(url="/admin-ui/configs", status_code=302)
+
+
+@router.get("/admin-ui/configs/{config_id}", response_class=HTMLResponse)
+def configs_edit_page(
+    request: Request,
+    config_id: int,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+):
+    if not _require_login(request):
+        return _redirect_to_login(f"/admin-ui/configs/{config_id}")
+
+    c = db.query(Config).filter(Config.id == config_id).first()
+    if not c:
+        return RedirectResponse(url="/admin-ui/configs", status_code=302)
+
+    err_msg = None
+    if error == "match_id_exists":
+        err_msg = "该 match_id 已被其它配置占用，请换一个。"
+
+    return templates.TemplateResponse(
+        "admin/config_edit.html",
+        {"request": request, "config": c, "error": err_msg},
+    )
+
+
+@router.post("/admin-ui/configs/{config_id}/update")
+def configs_update(
+    request: Request,
+    config_id: int,
+    match_id: int = Form(...),
+    content: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not _require_login(request):
+        return _redirect_to_login(f"/admin-ui/configs/{config_id}")
+
+    c = db.query(Config).filter(Config.id == config_id).first()
+    if not c:
+        return RedirectResponse(url="/admin-ui/configs", status_code=302)
+
+    text = (content or "")[:1024]
+    other = db.query(Config).filter(Config.match_id == match_id, Config.id != config_id).first()
+    if other:
+        # match_id 已被其它行占用，避免违反唯一约束
+        return RedirectResponse(url=f"/admin-ui/configs/{config_id}?error=match_id_exists", status_code=302)
+
+    c.match_id = match_id
+    c.content = text
+    db.commit()
+    return RedirectResponse(url="/admin-ui/configs", status_code=302)
+
+
+@router.post("/admin-ui/configs/{config_id}/delete")
+def configs_delete(request: Request, config_id: int, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/configs")
+
+    c = db.query(Config).filter(Config.id == config_id).first()
+    if c:
+        db.delete(c)
+        db.commit()
+    return RedirectResponse(url="/admin-ui/configs", status_code=302)
 
 
 def install_session_middleware(app) -> None:

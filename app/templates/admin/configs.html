@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card border-0 shadow-soft">
+        <div class="card-body">
+          <div class="fw-semibold fs-5 mb-2">赛事 / 公告配置</div>
+          <div class="text-muted small mb-3">按 <code>match_id</code> 唯一；若已存在则保存会更新该条内容。</div>
+          <form class="row g-2 align-items-end" method="post" action="/admin-ui/configs/create">
+            <div class="col-md-2">
+              <label class="form-label small text-muted mb-0">match_id</label>
+              <input class="form-control" name="match_id" type="number" required placeholder="例如 123">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label small text-muted mb-0">content（最多 1024 字）</label>
+              <textarea class="form-control" name="content" rows="2" maxlength="1024" placeholder="公告内容"></textarea>
+            </div>
+            <div class="col-md-2 d-grid">
+              <button class="btn btn-primary" type="submit">新增 / 更新</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card border-0 shadow-soft">
+        <div class="card-body">
+          <div class="fw-semibold mb-3">配置列表</div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>match_id</th>
+                  <th>content</th>
+                  <th class="text-end">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in configs %}
+                <tr>
+                  <td class="text-muted">{{ c.id }}</td>
+                  <td><code>{{ c.match_id }}</code></td>
+                  <td class="text-break" style="max-width: 520px;">
+                    {% if c.content %}
+                      {{ c.content[:120] }}{% if c.content|length > 120 %}…{% endif %}
+                    {% else %}
+                      <span class="text-muted">（空）</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a class="btn btn-outline-secondary btn-sm" href="/admin-ui/configs/{{ c.id }}">编辑</a>
+                    <form method="post" action="/admin-ui/configs/{{ c.id }}/delete" class="d-inline"
+                          onsubmit="return confirm('确认删除该配置？');">
+                      <button class="btn btn-outline-danger btn-sm" type="submit">删除</button>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="4" class="text-muted text-center py-4">暂无配置，可在上方新增。</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
