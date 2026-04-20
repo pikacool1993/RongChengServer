@@ -11,13 +11,13 @@
 
     <form class="row g-2 mb-3" method="get" action="/admin-ui/orders">
       <div class="col-md-3">
-        <input class="form-control" name="api_key" placeholder="api_key" value="{{ filters.api_key }}">
+        <input class="form-control" name="api_key" placeholder="密钥" value="{{ filters.api_key }}">
       </div>
       <div class="col-md-3">
-        <input class="form-control" name="device_id" placeholder="device_id" value="{{ filters.device_id }}">
+        <input class="form-control" name="device_id" placeholder="设备ID" value="{{ filters.device_id }}">
       </div>
       <div class="col-md-2">
-        <input class="form-control" name="match_id" placeholder="match_id" value="{{ filters.match_id }}">
+        <input class="form-control" name="match_id" placeholder="比赛ID" value="{{ filters.match_id }}">
       </div>
       <div class="col-md-2">
         <input class="form-control" name="page_size" type="number" min="1" max="200" value="{{ page_size }}">
@@ -32,14 +32,14 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>API Key</th>
-            <th>Device ID</th>
-            <th>Match</th>
-            <th>Tickets</th>
-            <th>Names</th>
-            <th>Region</th>
-            <th>Price</th>
-            <th>Created</th>
+            <th>比赛ID</th>
+            <th>票数</th>
+            <th>姓名</th>
+            <th>区域</th>
+            <th>价格</th>
+            <th>密钥</th>
+            <th>设备ID</th>
+            <th>创建时间</th>
             <th class="text-end">操作</th>
           </tr>
         </thead>
@@ -47,13 +47,13 @@
           {% for o in orders %}
           <tr>
             <td class="text-muted">{{ o.id }}</td>
-            <td><code>{{ o.api_key }}</code></td>
-            <td><code>{{ o.device_id }}</code></td>
             <td>{{ o.match_id }}</td>
             <td class="fw-semibold">{{ o.ticket_count }}</td>
             <td>{{ o.order_names }}</td>
             <td>{{ o.order_region }}</td>
             <td>{{ o.order_price }}</td>
+            <td><code>{{ o.api_key }}</code></td>
+            <td><code>{{ o.device_id }}</code></td>
             <td class="text-muted">{{ o.created_at }}</td>
             <td class="text-end">
               <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
@@ -82,4 +82,3 @@
     </div>
   </div>
 {% endblock %}
-

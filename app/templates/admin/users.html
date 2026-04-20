@@ -5,13 +5,13 @@
       <div class="card border-0 shadow-soft">
         <div class="card-body">
         <div class="fw-semibold fs-5 mb-3">用户</div>
-        <div class="text-muted small mb-3">创建或更新用户（同 api_key 会覆盖更新）。</div>
+        <div class="text-muted small mb-3">创建或更新用户（同密钥会覆盖更新）。</div>
         <form class="row g-2" method="post" action="/admin-ui/users/create">
           <div class="col-md-4">
-            <input class="form-control" name="name" placeholder="name（可空）">
+            <input class="form-control" name="name" placeholder="名称">
           </div>
           <div class="col-md-4">
-            <input class="form-control" name="api_key" placeholder="api_key" required>
+            <input class="form-control" name="api_key" placeholder="密钥" required>
           </div>
           <div class="col-md-2">
             <input class="form-control" name="max_devices" type="number" min="1" value="1">
@@ -33,11 +33,11 @@
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>API Key</th>
-                <th>Max Devices</th>
-                <th>Created</th>
-                <th>Updated</th>
+                <th>名称</th>
+                <th>密钥</th>
+                <th>最大设备数</th>
+                <th>创建时间</th>
+                <th>更新时间</th>
                 <th class="text-end">操作</th>
               </tr>
             </thead>
