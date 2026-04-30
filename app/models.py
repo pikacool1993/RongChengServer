@@ -1,7 +1,11 @@
 ﻿from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from .database import Base
+
+def now_cn():
+    utc_plus_8 = timezone(timedelta(hours=8))
+    return datetime.now(utc_plus_8).replace(tzinfo=None)
 
 class Config(Base):
     __tablename__ = 'configs'
@@ -17,8 +21,8 @@ class User(Base):
     name = Column(String(32), nullable=True)
     api_key = Column(String(64), unique=True, index=True)
     max_devices = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at =Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=now_cn)
+    updated_at =Column(DateTime, default=now_cn)
 
 class Device(Base):
     __tablename__ = 'devices'
@@ -26,8 +30,8 @@ class Device(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     device_id = Column(String(128))
-    first_seen = Column(DateTime, default=datetime.now)
-    last_seen = Column(DateTime, default=datetime.now)
+    first_seen = Column(DateTime, default=now_cn)
+    last_seen = Column(DateTime, default=now_cn)
 
 class Order(Base):
     __tablename__ = 'orders'
@@ -40,5 +44,5 @@ class Order(Base):
     order_price = Column(String(128), nullable=True)
     match_id = Column(Integer, index=True)
     ticket_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=now_cn)
 
