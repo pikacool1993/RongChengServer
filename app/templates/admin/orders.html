@@ -7,6 +7,10 @@
           <div class="fw-semibold fs-5">订单</div>
           <div class="text-muted small">总数：{{ total }}，页码：{{ page }}，票数合计：{{ tickets_sum }}</div>
         </div>
+        <form method="post" action="/admin-ui/orders/delete-all" class="d-inline"
+              onsubmit="return confirm('确认删除全部订单？此操作不可恢复。');">
+          <button class="btn btn-outline-danger btn-sm" type="submit" {% if total == 0 %}disabled{% endif %}>删除全部订单</button>
+        </form>
       </div>
 
     <form class="row g-2 mb-3" method="get" action="/admin-ui/orders">

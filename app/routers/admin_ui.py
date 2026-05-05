@@ -293,6 +293,16 @@ def order_delete(request: Request, order_id: int, next: str = Form("/admin-ui/or
     return RedirectResponse(url=next or "/admin-ui/orders", status_code=302)
 
 
+@router.post("/admin-ui/orders/delete-all")
+def orders_delete_all(request: Request, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/orders")
+
+    db.query(Order).delete(synchronize_session=False)
+    db.commit()
+    return RedirectResponse(url="/admin-ui/orders", status_code=302)
+
+
 # =========================
 # configs（赛事/公告配置）
 # =========================
