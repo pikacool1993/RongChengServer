@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ..database import get_db
 from ..env import load_env
-from ..models import Config, Device, Order, User
+from ..models import Config, Device, Order, User, now_cn
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def users_create(
     if existing:
         existing.name = name
         existing.max_devices = max_devices
-        existing.updated_at = func.now()
+        existing.updated_at = now_cn()
         db.commit()
         return RedirectResponse(url="/admin-ui/users", status_code=302)
 
@@ -142,7 +142,7 @@ def users_update(
     if u:
         u.name = name
         u.max_devices = max_devices
-        u.updated_at = func.now()
+        u.updated_at = now_cn()
         db.commit()
     return RedirectResponse(url="/admin-ui/users", status_code=302)
 

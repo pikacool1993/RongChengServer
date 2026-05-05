@@ -13,7 +13,6 @@ from ..services.email_service import send_email
 
 router = APIRouter(tags=["task"])
 
-
 @router.post("/task/check")
 def task_check(req: TaskCheckRequest, db: Session = Depends(get_db)):
     now = int(time.time())

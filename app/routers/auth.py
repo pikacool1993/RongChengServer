@@ -7,12 +7,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Device, User
+from ..models import Device, User, now_cn
 from ..response import success
 from ..schemas import AuthRequest
 
 router = APIRouter(tags=["auth"])
-
 
 @router.post("/auth")
 def auth(req: AuthRequest, db: Session = Depends(get_db)):
@@ -30,7 +29,7 @@ def auth(req: AuthRequest, db: Session = Depends(get_db)):
 
         db.add(Device(user_id=user.id, device_id=req.device_id))
     else:
-        device.last_seen = datetime.now()
+        device.last_seen = now_cn()
 
     db.commit()
 
