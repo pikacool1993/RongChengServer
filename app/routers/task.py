@@ -45,6 +45,9 @@ def task_order(req: TaskOrderRequest, background_tasks: BackgroundTasks, db: Ses
             order_names=req.order_names,
             order_region=req.order_region,
             order_price=req.order_price,
+            first_delay = req.first_delay,
+            first_start_t = req.first_start_t,
+            first_end_t = req.first_end_t
         )
     )
     db.commit()

@@ -44,6 +44,9 @@
             <th>密钥</th>
             <th>设备ID</th>
             <th>创建时间</th>
+            <th>首开延迟</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
             <th class="text-end">操作</th>
           </tr>
         </thead>
@@ -59,6 +62,9 @@
             <td><code>{{ o.api_key }}</code></td>
             <td><code>{{ o.device_id }}</code></td>
             <td class="text-muted">{{ o.created_at }}</td>
+            <td>{{ o.first_delay }}</td>
+            <td>{{ o.first_start_t }}</td>
+            <td>{{ o.first_end_t }}</td>
             <td class="text-end">
               <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
                     onsubmit="return confirm('确认删除该订单？');">

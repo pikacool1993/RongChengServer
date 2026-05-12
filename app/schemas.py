@@ -22,6 +22,9 @@ class TaskOrderRequest(BaseModel):
     order_names: str
     order_region: str
     order_price: str
+    first_delay: float
+    first_start_t: str
+    first_end_t: str
 
 class AdminCreateUserRequest(BaseModel):
     password: str

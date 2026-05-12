@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+﻿from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from datetime import datetime, timezone, timedelta
 
 from .database import Base
@@ -44,5 +44,8 @@ class Order(Base):
     order_price = Column(String(128), nullable=True)
     match_id = Column(Integer, index=True)
     ticket_count = Column(Integer, default=0)
+    first_delay = Column(Float, default=0)
+    first_start_t = Column(String(128), nullable=True)
+    first_end_t = Column(String(128), nullable=True)
     created_at = Column(DateTime, default=now_cn)
 

@@ -263,6 +263,9 @@ def orders_page(
                 "order_names": o.order_names,
                 "order_region": o.order_region,
                 "order_price": o.order_price,
+                "first_delay": o.first_delay,
+                "first_start_t": o.first_start_t,
+                "first_end_t": o.first_end_t,
                 "created_at": o.created_at,
             }
         )
