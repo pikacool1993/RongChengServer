@@ -1,16 +1,16 @@
 {
-  "id": 81,
+  "id": 82,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
   "team1_name": "成都蓉城",
-  "team2_color": "rgba(192, 39, 47, 1)",
-  "team2_id": 48,
-  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/202456/河南队.png",
-  "team2_name": "河南俱乐部彩陶坊",
-  "time_e": 1778335200,
-  "time_s": 1778328000,
+  "team2_color": "rgba(187, 29, 33, 1)",
+  "team2_id": 39,
+  "team2_logo": "https://fcscdn3.k4n.cc/upload/a28/png/2024221/上海海港.png",
+  "team2_name": "上海海港",
+  "time_e": 1779199200,
+  "time_s": 1779192000,
   "sale": 1,
-  "line_s_time": 1778133600,
-  "line_e_time": 1778306400
+  "line_s_time": 1778997600,
+  "line_e_time": 1779170400
 }
