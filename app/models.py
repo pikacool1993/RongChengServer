@@ -44,8 +44,9 @@ class Order(Base):
     order_price = Column(String(128), nullable=True)
     match_id = Column(Integer, index=True)
     ticket_count = Column(Integer, default=0)
-    first_delay = Column(Float, default=0)
+    first_delay = Column(Integer, default=0)
     first_start_t = Column(String(128), nullable=True)
     first_end_t = Column(String(128), nullable=True)
+    type = Column(Integer, default=0)
     created_at = Column(DateTime, default=now_cn)
 

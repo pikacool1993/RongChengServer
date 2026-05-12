@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import time
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Device, Order, User
 from ..response import success
 from ..schemas import TaskCheckRequest, TaskOrderRequest
-from ..services.email_service import send_email
 
 router = APIRouter(tags=["task"])
 
@@ -28,9 +27,8 @@ def task_check(req: TaskCheckRequest, db: Session = Depends(get_db)):
         {"status": 1, "api_key": user.api_key, "device_id": device.device_id, "desc": "ok", "t": now}
     )
 
-
 @router.post("/task/order")
-def task_order(req: TaskOrderRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def task_order(req: TaskOrderRequest, db: Session = Depends(get_db)):
     now = int(time.time())
     user = db.query(User).filter_by(api_key=req.api_key).first()
     if not user:
@@ -38,22 +36,19 @@ def task_order(req: TaskOrderRequest, background_tasks: BackgroundTasks, db: Ses
 
     db.add(
         Order(
-            user_id=user.id,
-            device_id=req.device_id,
-            match_id=req.match_id,
-            ticket_count=req.ticket_count,
-            order_names=req.order_names,
-            order_region=req.order_region,
-            order_price=req.order_price,
+            user_id = user.id,
+            device_id = req.device_id,
+            match_id = req.match_id,
+            ticket_count = req.ticket_count,
+            order_names = req.order_names,
+            order_region = req.order_region,
+            order_price = req.order_price,
             first_delay = req.first_delay,
             first_start_t = req.first_start_t,
-            first_end_t = req.first_end_t
+            first_end_t = req.first_end_t,
+            type = req.type
         )
     )
     db.commit()
-
-    if req.email and req.email.strip():
-        background_tasks.add_task(send_email, req.email, req.email_content)
-
     return success({"status": 1, "desc": "ok", "t": now})
 

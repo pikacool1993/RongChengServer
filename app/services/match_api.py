@@ -23,18 +23,10 @@ def build_match_detail_headers() -> dict[str, str]:
 
     return {
         "Authorization": f"Bearer {bearer}",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254181d) XWEB/19201",
-        "xweb_xhr": "1",
         "Content-Type": "application/json;charset:utf-8;",
-        "Accept": "*/*",
-        "Sec-Fetch-Site": "cross-site",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Dest": "empty",
         "Referer": "https://servicewechat.com/wxffa42ecd6c0e693d/78/page-frame.html",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.71(0x18004730) NetType/WIFI Language/zh_CN"
     }
-
 
 async def request_match_detail(match_id: str) -> dict:
     url = build_match_detail_url()
