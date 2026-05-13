@@ -1,5 +1,23 @@
 {% extends "admin/base.html" %}
 {% block content %}
+  <style>
+    .orders-table {
+      min-width: 1320px;
+      font-size: 0.82rem;
+    }
+    .orders-table th,
+    .orders-table td {
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .orders-table .text-truncate-cell {
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+
   <div class="card border-0 shadow-soft">
     <div class="card-body">
       <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
@@ -32,11 +50,12 @@
     </form>
 
     <div class="table-responsive">
-      <table class="table table-sm align-middle table-hover">
-        <thead>
+      <table class="table table-sm align-middle table-hover orders-table">
+        <thead class="table-light">
           <tr>
             <th>ID</th>
             <th>比赛ID</th>
+            <th>类型</th>
             <th>票数</th>
             <th>姓名</th>
             <th>区域</th>
@@ -55,9 +74,10 @@
           <tr>
             <td class="text-muted">{{ o.id }}</td>
             <td>{{ o.match_id }}</td>
+            <td><span class="badge text-bg-secondary">{{ o.type_label }}</span></td>
             <td class="fw-semibold">{{ o.ticket_count }}</td>
-            <td>{{ o.order_names }}</td>
-            <td>{{ o.order_region }}</td>
+            <td><div class="text-truncate-cell" title="{{ o.order_names }}">{{ o.order_names }}</div></td>
+            <td><div class="text-truncate-cell" title="{{ o.order_region }}">{{ o.order_region }}</div></td>
             <td>{{ o.order_price }}</td>
             <td><code>{{ o.api_key }}</code></td>
             <td><code>{{ o.device_id }}</code></td>

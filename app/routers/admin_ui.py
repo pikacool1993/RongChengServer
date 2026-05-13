@@ -259,6 +259,8 @@ def orders_page(
                 "api_key": u.api_key,
                 "device_id": o.device_id,
                 "match_id": o.match_id,
+                "type": o.type,
+                "type_label": {0: "首开", 1: "捡漏", 2: "广播", 3: "蹲坑"}.get(o.type, f"未知({o.type})"),
                 "ticket_count": o.ticket_count,
                 "order_names": o.order_names,
                 "order_region": o.order_region,
