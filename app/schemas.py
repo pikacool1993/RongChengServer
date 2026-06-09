@@ -1,5 +1,8 @@
 ﻿from pydantic import BaseModel
 
+class OrderQueryRequest(BaseModel):
+    name: str
+
 class MatchQueryRequest(BaseModel):
     api_key: str
     match_id: str

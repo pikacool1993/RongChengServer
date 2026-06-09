@@ -14,6 +14,7 @@ from .admin import router as admin_router
 from .response import fail
 from .routers import auth_router, match_router, task_router
 from .routers.admin_ui import install_session_middleware, router as admin_ui_router
+from .routers.order_query_ui import router as order_query_ui_router
 from .sign import generate_sign
 
 load_env()
@@ -34,6 +35,7 @@ app.include_router(match_router)
 app.include_router(auth_router)
 app.include_router(task_router)
 app.include_router(admin_ui_router)
+app.include_router(order_query_ui_router)
 
 install_session_middleware(app)
 
@@ -44,6 +46,8 @@ def is_excluded(path: str) -> bool:
         or path.startswith("/openapi.json")
         or path.startswith("/admin")
         or path.startswith("/admin-ui")
+        or path == "/order/query"
+        or path == "/query"
     )
     return excluded
 

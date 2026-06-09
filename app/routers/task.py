@@ -8,9 +8,19 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Device, Order, User
 from ..response import success
-from ..schemas import TaskCheckRequest, TaskOrderRequest
+from ..schemas import OrderQueryRequest, TaskCheckRequest, TaskOrderRequest
+from ..services.order_query import query_orders_by_name
 
 router = APIRouter(tags=["task"])
+
+
+@router.post("/order/query")
+def order_query(req: OrderQueryRequest, db: Session = Depends(get_db)):
+    results = query_orders_by_name(db, req.name)
+    if not results:
+        return {"msg": "未查询到结果"}
+    return results
+
 
 @router.post("/task/check")
 def task_check(req: TaskCheckRequest, db: Session = Depends(get_db)):
