@@ -279,6 +279,8 @@ def list_orders(
                     "match_id": o.match_id,
                     "ticket_count": o.ticket_count,
                     "order_names": o.order_names,
+                    "order_cards": o.order_cards,
+                    "order_phones": o.order_phones,
                     "order_region": o.order_region,
                     "order_price": o.order_price,
                     "created_at": o.created_at.timestamp() if o.created_at else None,

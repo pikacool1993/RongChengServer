@@ -40,6 +40,8 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     device_id = Column(String(128), index=True)
     order_names = Column(String(128), nullable=True)
+    order_cards = Column(String(128), nullable=True)
+    order_phones = Column(String(128), nullable=True)
     order_region = Column(String(128), nullable=True)
     order_price = Column(String(128), nullable=True)
     match_id = Column(Integer, index=True)

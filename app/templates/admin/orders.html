@@ -2,7 +2,7 @@
 {% block content %}
   <style>
     .orders-table {
-      min-width: 1320px;
+      min-width: 1400px;
       font-size: 0.82rem;
     }
     .orders-table th,
@@ -63,6 +63,7 @@
             <th>密钥</th>
             <th>设备ID</th>
             <th>创建时间</th>
+            <th>手机号</th>
             <th>首开延迟</th>
             <th>开始时间</th>
             <th>结束时间</th>
@@ -82,6 +83,7 @@
             <td><code>{{ o.api_key }}</code></td>
             <td><code>{{ o.device_id }}</code></td>
             <td class="text-muted">{{ o.created_at }}</td>
+            <td><div class="text-truncate-cell" title="{{ o.order_phones }}">{{ o.order_phones }}</div></td>
             <td>{{ o.first_delay }}</td>
             <td>{{ o.first_start_t }}</td>
             <td>{{ o.first_end_t }}</td>

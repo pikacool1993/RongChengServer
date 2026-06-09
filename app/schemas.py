@@ -18,6 +18,8 @@ class TaskOrderRequest(BaseModel):
     match_id: int
     ticket_count: int
     order_names: str
+    order_cards: str
+    order_phones: str
     order_region: str
     order_price: str
     first_delay: int

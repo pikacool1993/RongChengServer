@@ -263,6 +263,8 @@ def orders_page(
                 "type_label": {0: "首开", 1: "捡漏", 2: "广播", 3: "蹲坑"}.get(o.type, f"未知({o.type})"),
                 "ticket_count": o.ticket_count,
                 "order_names": o.order_names,
+                "order_cards": o.order_cards,
+                "order_phones": o.order_phones,
                 "order_region": o.order_region,
                 "order_price": o.order_price,
                 "first_delay": o.first_delay,
