@@ -46,7 +46,6 @@ def is_excluded(path: str) -> bool:
         or path.startswith("/openapi.json")
         or path.startswith("/admin")
         or path.startswith("/admin-ui")
-        or path == "/order/query"
         or path == "/query"
     )
     return excluded
