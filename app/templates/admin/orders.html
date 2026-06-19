@@ -2,7 +2,7 @@
 {% block content %}
   <style>
     .orders-table {
-      min-width: 1400px;
+      min-width: 1480px;
       font-size: 0.82rem;
     }
     .orders-table th,
@@ -15,6 +15,22 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .orders-table .text-full-cell {
+      min-width: 120px;
+      max-width: 280px;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+    .orders-table .phone-cell {
+      min-width: 120px;
+      white-space: nowrap;
+    }
+    .orders-table .device-id-cell {
+      min-width: 74px;
+      text-align: center;
     }
   </style>
 
@@ -77,16 +93,22 @@
             <td>{{ o.match_id }}</td>
             <td><span class="badge text-bg-secondary">{{ o.type_label }}</span></td>
             <td class="fw-semibold">{{ o.ticket_count }}</td>
-            <td><div class="text-truncate-cell" title="{{ o.order_names }}">{{ o.order_names }}</div></td>
-            <td><div class="text-truncate-cell" title="{{ o.order_region }}">{{ o.order_region }}</div></td>
-            <td>{{ o.order_price }}</td>
-            <td><code>{{ o.api_key }}</code></td>
-            <td><code>{{ o.device_id }}</code></td>
-            <td class="text-muted">{{ o.created_at }}</td>
-            <td><div class="text-truncate-cell" title="{{ o.order_phones }}">{{ o.order_phones }}</div></td>
+            <td><div class="text-full-cell">{{ o.order_names or "" }}</div></td>
+            <td><div class="text-full-cell">{{ o.order_region or "" }}</div></td>
+            <td><div class="text-truncate-cell" title="{{ o.order_price or '' }}">{{ o.order_price or "" }}</div></td>
+            <td><div class="text-truncate-cell" title="{{ o.api_key or '' }}"><code>{{ o.api_key or "" }}</code></div></td>
+            <td class="device-id-cell" title="原始设备ID：{{ o.device_id or '' }}">
+              {% if o.device_unique_id %}
+                <code>#{{ o.device_unique_id }}</code>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-muted"><div class="text-truncate-cell" title="{{ o.created_at }}">{{ o.created_at }}</div></td>
+            <td><div class="phone-cell">{{ o.order_phones or "" }}</div></td>
             <td>{{ o.first_delay }}</td>
-            <td>{{ o.first_start_t }}</td>
-            <td>{{ o.first_end_t }}</td>
+            <td><div class="text-truncate-cell" title="{{ o.first_start_t or '' }}">{{ o.first_start_t or "" }}</div></td>
+            <td><div class="text-truncate-cell" title="{{ o.first_end_t or '' }}">{{ o.first_end_t or "" }}</div></td>
             <td class="text-end">
               <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
                     onsubmit="return confirm('确认删除该订单？');">

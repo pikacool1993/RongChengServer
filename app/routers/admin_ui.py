@@ -7,7 +7,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -229,27 +228,34 @@ def orders_page(
     if match_id_value is not None:
         q = q.filter(Order.match_id == match_id_value)
 
-    total = q.count()
-    tickets_sum = (
-        db.query(func.coalesce(func.sum(Order.ticket_count), 0))
-        .select_from(Order)
-        .join(User, User.id == Order.user_id)
-        .filter(True)
-    )
-    if api_key:
-        tickets_sum = tickets_sum.filter(User.api_key == api_key)
-    if device_id:
-        tickets_sum = tickets_sum.filter(Order.device_id == device_id)
-    if match_id_value is not None:
-        tickets_sum = tickets_sum.filter(Order.match_id == match_id_value)
-    tickets_sum_value = int(tickets_sum.scalar() or 0)
+    raw_items = q.order_by(Order.created_at.desc(), Order.id.desc()).all()
 
-    items = (
-        q.order_by(Order.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
+    deduped_items: list[tuple[Order, User]] = []
+    seen_order_cards: set[str] = set()
+    for o, u in raw_items:
+        order_cards = (o.order_cards or "").strip()
+        if order_cards:
+            if order_cards in seen_order_cards:
+                continue
+            seen_order_cards.add(order_cards)
+        deduped_items.append((o, u))
+
+    total = len(deduped_items)
+    tickets_sum_value = sum(int(o.ticket_count or 0) for o, _ in deduped_items)
+    start = (page - 1) * page_size
+    items = deduped_items[start : start + page_size]
+
+    device_keys = [(o.user_id, o.device_id) for o, _ in items if o.device_id]
+    device_id_map: dict[tuple[int, str], int] = {}
+    if device_keys:
+        user_ids = {user_id for user_id, _ in device_keys}
+        raw_device_ids = {raw_device_id for _, raw_device_id in device_keys}
+        devices = (
+            db.query(Device)
+            .filter(Device.user_id.in_(user_ids), Device.device_id.in_(raw_device_ids))
+            .all()
+        )
+        device_id_map = {(d.user_id, d.device_id): d.id for d in devices}
 
     orders: list[dict[str, Any]] = []
     for o, u in items:
@@ -258,6 +264,7 @@ def orders_page(
                 "id": o.id,
                 "api_key": u.api_key,
                 "device_id": o.device_id,
+                "device_unique_id": device_id_map.get((o.user_id, o.device_id)) if o.device_id else None,
                 "match_id": o.match_id,
                 "type": o.type,
                 "type_label": {0: "首开", 1: "捡漏", 2: "广播", 3: "蹲坑"}.get(o.type, f"未知({o.type})"),
