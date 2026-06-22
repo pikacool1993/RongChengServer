@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -220,7 +221,7 @@ def orders_page(
             # 非数字：当成未填写，避免直接报 422/500 影响使用
             match_id_value = None
 
-    q = db.query(Order, User).join(User, User.id == Order.user_id)
+    q = db.query(Order).join(User, User.id == Order.user_id)
     if api_key:
         q = q.filter(User.api_key == api_key)
     if device_id:
@@ -228,22 +229,38 @@ def orders_page(
     if match_id_value is not None:
         q = q.filter(Order.match_id == match_id_value)
 
-    raw_items = q.order_by(Order.created_at.desc(), Order.id.desc()).all()
+    order_cards_key = func.trim(func.coalesce(Order.order_cards, "")).label("order_cards_key")
+    dedupe_rank = func.row_number().over(
+        partition_by=order_cards_key,
+        order_by=(Order.created_at.desc(), Order.id.desc()),
+    ).label("dedupe_rank")
+    ranked_orders = q.with_entities(
+        Order.id.label("order_id"),
+        order_cards_key,
+        dedupe_rank,
+    ).subquery()
+    deduped_order_ids = (
+        db.query(ranked_orders.c.order_id)
+        .filter(or_(ranked_orders.c.order_cards_key == "", ranked_orders.c.dedupe_rank == 1))
+        .subquery()
+    )
 
-    deduped_items: list[tuple[Order, User]] = []
-    seen_order_cards: set[str] = set()
-    for o, u in raw_items:
-        order_cards = (o.order_cards or "").strip()
-        if order_cards:
-            if order_cards in seen_order_cards:
-                continue
-            seen_order_cards.add(order_cards)
-        deduped_items.append((o, u))
-
-    total = len(deduped_items)
-    tickets_sum_value = sum(int(o.ticket_count or 0) for o, _ in deduped_items)
-    start = (page - 1) * page_size
-    items = deduped_items[start : start + page_size]
+    total = db.query(func.count()).select_from(deduped_order_ids).scalar() or 0
+    tickets_sum_value = (
+        db.query(func.coalesce(func.sum(Order.ticket_count), 0))
+        .join(deduped_order_ids, deduped_order_ids.c.order_id == Order.id)
+        .scalar()
+        or 0
+    )
+    items = (
+        db.query(Order, User)
+        .join(User, User.id == Order.user_id)
+        .join(deduped_order_ids, deduped_order_ids.c.order_id == Order.id)
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
 
     device_keys = [(o.user_id, o.device_id) for o, _ in items if o.device_id]
     device_id_map: dict[tuple[int, str], int] = {}
