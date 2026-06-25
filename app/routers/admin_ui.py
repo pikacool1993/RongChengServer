@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -95,6 +95,7 @@ def users_create(
     request: Request,
     name: str = Form(""),
     api_key: str = Form(...),
+    lark_key: str = Form(""),
     max_devices: int = Form(1),
     db: Session = Depends(get_db),
 ):
@@ -104,12 +105,13 @@ def users_create(
     existing = db.query(User).filter(User.api_key == api_key).first()
     if existing:
         existing.name = name
+        existing.lark_key = lark_key or None
         existing.max_devices = max_devices
         existing.updated_at = now_cn()
         db.commit()
         return RedirectResponse(url="/admin-ui/users", status_code=302)
 
-    u = User(name=name, api_key=api_key, max_devices=max_devices)
+    u = User(name=name, api_key=api_key, lark_key=lark_key or None, max_devices=max_devices)
     db.add(u)
     db.commit()
     return RedirectResponse(url="/admin-ui/users", status_code=302)
@@ -132,6 +134,7 @@ def users_update(
     request: Request,
     api_key: str,
     name: str = Form(""),
+    lark_key: str = Form(""),
     max_devices: int = Form(1),
     db: Session = Depends(get_db),
 ):
@@ -141,6 +144,7 @@ def users_update(
     u = db.query(User).filter(User.api_key == api_key).first()
     if u:
         u.name = name
+        u.lark_key = lark_key or None
         u.max_devices = max_devices
         u.updated_at = now_cn()
         db.commit()
@@ -191,8 +195,11 @@ def device_delete(request: Request, device_id: int, next: str = Form("/admin-ui/
 def orders_page(
     request: Request,
     api_key: str | None = None,
+    raw_api_key: str | None = None,
     device_id: str | None = None,
+    device_name: str | None = None,
     match_id: str | None = None,
+    parse_status: str | None = None,
     page: int = 1,
     page_size: int = 50,
     db: Session = Depends(get_db),
@@ -221,41 +228,24 @@ def orders_page(
             # 非数字：当成未填写，避免直接报 422/500 影响使用
             match_id_value = None
 
-    q = db.query(Order).join(User, User.id == Order.user_id)
+    q = db.query(Order, User).outerjoin(User, User.id == Order.user_id)
     if api_key:
         q = q.filter(User.api_key == api_key)
+    if raw_api_key:
+        q = q.filter(Order.raw_api_key == raw_api_key)
     if device_id:
         q = q.filter(Order.device_id == device_id)
+    if device_name:
+        q = q.filter(Order.device_name.like(f"%{device_name}%"))
     if match_id_value is not None:
         q = q.filter(Order.match_id == match_id_value)
+    if parse_status:
+        q = q.filter(Order.parse_status == parse_status)
 
-    order_cards_key = func.trim(func.coalesce(Order.order_cards, "")).label("order_cards_key")
-    dedupe_rank = func.row_number().over(
-        partition_by=order_cards_key,
-        order_by=(Order.created_at.desc(), Order.id.desc()),
-    ).label("dedupe_rank")
-    ranked_orders = q.with_entities(
-        Order.id.label("order_id"),
-        order_cards_key,
-        dedupe_rank,
-    ).subquery()
-    deduped_order_ids = (
-        db.query(ranked_orders.c.order_id)
-        .filter(or_(ranked_orders.c.order_cards_key == "", ranked_orders.c.dedupe_rank == 1))
-        .subquery()
-    )
-
-    total = db.query(func.count()).select_from(deduped_order_ids).scalar() or 0
-    tickets_sum_value = (
-        db.query(func.coalesce(func.sum(Order.ticket_count), 0))
-        .join(deduped_order_ids, deduped_order_ids.c.order_id == Order.id)
-        .scalar()
-        or 0
-    )
+    total = q.count()
+    tickets_sum_value = q.with_entities(func.coalesce(func.sum(Order.ticket_count), 0)).scalar() or 0
     items = (
-        db.query(Order, User)
-        .join(User, User.id == Order.user_id)
-        .join(deduped_order_ids, deduped_order_ids.c.order_id == Order.id)
+        q
         .order_by(Order.created_at.desc(), Order.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -279,8 +269,11 @@ def orders_page(
         orders.append(
             {
                 "id": o.id,
-                "api_key": u.api_key,
+                "api_key": u.api_key if u else None,
+                "raw_api_key": o.raw_api_key,
+                "has_user": u is not None,
                 "device_id": o.device_id,
+                "device_name": o.device_name,
                 "device_unique_id": device_id_map.get((o.user_id, o.device_id)) if o.device_id else None,
                 "match_id": o.match_id,
                 "type": o.type,
@@ -294,6 +287,9 @@ def orders_page(
                 "first_delay": o.first_delay,
                 "first_start_t": o.first_start_t,
                 "first_end_t": o.first_end_t,
+                "raw_payload": o.raw_payload,
+                "parse_status": o.parse_status,
+                "parse_error": o.parse_error,
                 "created_at": o.created_at,
             }
         )
@@ -303,7 +299,14 @@ def orders_page(
         {
             "request": request,
             "orders": orders,
-            "filters": {"api_key": api_key or "", "device_id": device_id or "", "match_id": "" if match_id_value is None else str(match_id_value)},
+            "filters": {
+                "api_key": api_key or "",
+                "raw_api_key": raw_api_key or "",
+                "device_id": device_id or "",
+                "device_name": device_name or "",
+                "match_id": "" if match_id_value is None else str(match_id_value),
+                "parse_status": parse_status or "",
+            },
             "page": page,
             "page_size": page_size,
             "total": total,

@@ -131,9 +131,14 @@
           <div class="page-title">结果查询</div>
         </div>
 
-        {% if rate_limited %}
+        {% if retry_after > 0 %}
           <div class="alert alert-warning text-center py-2 mb-3">
-            查询过于频繁，请 <span id="retry-after">{{ retry_after }}</span> 秒后再试
+            {% if rate_limited %}
+              查询过于频繁，请
+            {% else %}
+              本次查询已提交，请在
+            {% endif %}
+            <span id="retry-after">{{ retry_after }}</span> 秒后再试
           </div>
         {% endif %}
 
@@ -189,6 +194,7 @@
       if (!btn || remaining <= 0) return;
 
       btn.disabled = true;
+      btn.textContent = remaining + " 秒后可查询";
       var timer = setInterval(function () {
         remaining -= 1;
         if (retryEl) retryEl.textContent = remaining;

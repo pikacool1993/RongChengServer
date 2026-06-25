@@ -21,6 +21,10 @@
         <label class="form-label">Name</label>
         <input class="form-control" name="name" value="{{ user.name or '' }}">
       </div>
+      <div class="col-md-6">
+        <label class="form-label">Lark Key</label>
+        <input class="form-control" name="lark_key" value="{{ user.lark_key or '' }}" placeholder="飞书key">
+      </div>
       <div class="col-md-3">
         <label class="form-label">Max Devices</label>
         <input class="form-control" name="max_devices" type="number" min="1" value="{{ user.max_devices }}">

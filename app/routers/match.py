@@ -4,26 +4,30 @@ import json
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Config, User
 from ..response import fail, success
-from ..schemas import MatchQueryRequest
 from ..services.match_api import request_match_detail
+from .encrypted import read_encrypted_request
 
 router = APIRouter(tags=["match"])
 
 
-@router.get("/match/config")
-def match_config(db: Session = Depends(get_db)):
+@router.post("/match/config")
+async def match_config(request: Request, db: Session = Depends(get_db)):
+    _, _, error = await read_encrypted_request(request)
+    if error:
+        return error
+
     try:
         base_dir = Path(__file__).resolve().parent.parent
         file_path = base_dir / "resources" / "match.json"
 
         if not file_path.exists():
-            return fail(-11, msg="match file not found")
+            return fail(-11, msg="match file not found", encrypt=True)
 
         with open(file_path, "r", encoding="utf-8") as f:
             item = json.load(f)
@@ -38,26 +42,28 @@ def match_config(db: Session = Depends(get_db)):
         match_id = item.get("id")
 
         c = db.query(Config).filter_by(match_id=match_id).first()
-        if not c:
-            return success({"info": info, "notice": ""})
-
-        return success({"info": info, "notice": c.content})
+        return success({"info": info, "notice": c.content if c else ""})
     except json.JSONDecodeError:
-        return fail(-12, msg="invalid json format")
+        return fail(-12, msg="invalid json format", encrypt=True)
     except Exception as e:
-        return fail(-13, msg=str(e))
+        return fail(-13, msg=str(e), encrypt=True)
 
 
 @router.post("/match/detail")
-async def match_detail(req: MatchQueryRequest, db: Session = Depends(get_db)):
+async def match_detail(request: Request, db: Session = Depends(get_db)):
+    req, _, error = await read_encrypted_request(request)
+    if error:
+        return error
+
     now = int(time.time())
-    user = db.query(User).filter_by(api_key=req.api_key).first()
+    api_key = str(req.get("api_key") or "")
+    match_id = str(req.get("match_id") or "")
+    user = db.query(User).filter_by(api_key=api_key).first()
     if not user:
-        return success({"status": 2, "desc": "user not found", "t": now})
+        return fail(-1001, msg="user not found", encrypt=True)
 
     try:
-        detail = await request_match_detail(req.match_id)
-        return success({"status": 1, "detail": detail, "desc": "ok", "t": now})
+        detail = await request_match_detail(match_id)
+        return success({"detail": detail, "t": now})
     except Exception as e:
-        return success({"status": -1, "desc": str(e), "t": now})
-
+        return fail(-2001, msg=str(e), encrypt=True)

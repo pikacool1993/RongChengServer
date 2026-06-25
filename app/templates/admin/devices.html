@@ -17,6 +17,7 @@
           <tr>
             <th>ID</th>
             <th>设备ID</th>
+            <th>设备名</th>
             <th>创建时间</th>
             <th>更新时间</th>
             <th class="text-end">操作</th>
@@ -27,6 +28,7 @@
           <tr>
             <td class="text-muted">{{ d.id }}</td>
             <td><code>{{ d.device_id }}</code></td>
+            <td>{{ d.device_name or "" }}</td>
             <td class="text-muted">{{ d.first_seen }}</td>
             <td class="text-muted">{{ d.last_seen }}</td>
             <td class="text-end">

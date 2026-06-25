@@ -18,6 +18,13 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  redis:
+    image: redis:7-alpine
+    container_name: rc_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
   api:
     build: .
     env_file:
@@ -26,6 +33,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "8000:8000"
 

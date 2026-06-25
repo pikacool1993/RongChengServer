@@ -67,6 +67,7 @@ def create_config(req: AdminCreateConfigRequest, db: Session = Depends(get_db)):
 def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     name = req.name
     api_key = req.api_key
+    lark_key = req.lark_key
     max_devices = req.max_devices
     password = req.password
 
@@ -77,6 +78,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.api_key == api_key).first()
     if existing:
         existing.name = name
+        existing.lark_key = lark_key
         existing.max_devices = max_devices
         db.commit()
         db.refresh(existing)
@@ -85,11 +87,12 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
             "id": existing.id,
             "name": existing.name,
             "api_key": existing.api_key,
+            "lark_key": existing.lark_key,
             "max_devices": existing.max_devices,
             "created_at": existing.created_at.timestamp()
         }, encrypt=False)
 
-    u = User(name=name, api_key=api_key, max_devices=max_devices)
+    u = User(name=name, api_key=api_key, lark_key=lark_key, max_devices=max_devices)
     db.add(u)
     db.commit()
     db.refresh(u)
@@ -98,6 +101,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
         "id": u.id,
         "name": u.name,
         "api_key": u.api_key,
+        "lark_key": u.lark_key,
         "max_devices": u.max_devices,
         "created_at": u.created_at.timestamp()
     }, encrypt=False)
@@ -134,6 +138,8 @@ def update_user(req: AdminUpdateUserRequest, db: Session = Depends(get_db)):
 
     if req.name is not None:
         u.name = req.name
+    if req.lark_key is not None:
+        u.lark_key = req.lark_key
     if req.max_devices is not None:
         u.max_devices = req.max_devices
     u.updated_at = func.now()
@@ -145,6 +151,7 @@ def update_user(req: AdminUpdateUserRequest, db: Session = Depends(get_db)):
             "id": u.id,
             "name": u.name,
             "api_key": u.api_key,
+            "lark_key": u.lark_key,
             "max_devices": u.max_devices,
             "created_at": u.created_at.timestamp(),
             "updated_at": u.updated_at.timestamp() if u.updated_at else None,
@@ -168,6 +175,7 @@ def list_users(password: str, db: Session = Depends(get_db)):
                 "id": u.id,
                 "name": u.name,
                 "api_key": u.api_key,
+                "lark_key": u.lark_key,
                 "max_devices": u.max_devices,
                 "created_at": u.created_at.timestamp(),
                 "updated_at": u.updated_at.timestamp() if u.updated_at else None,
@@ -197,6 +205,7 @@ def get_user_devices(api_key: str, password: str, db: Session = Depends(get_db))
             {
                 "id": d.id,
                 "device_id": d.device_id,
+                "device_name": d.device_name,
                 "first_seen": d.first_seen.timestamp(),
                 "last_seen": d.last_seen.timestamp(),
             }
@@ -231,8 +240,11 @@ def get_tickets_count(api_key: str, password: str, db: Session = Depends(get_db)
 def list_orders(
     password: str,
     api_key: str | None = None,
+    raw_api_key: str | None = None,
     device_id: str | None = None,
+    device_name: str | None = None,
     match_id: int | None = None,
+    parse_status: str | None = None,
     page: int = 1,
     page_size: int = 50,
     db: Session = Depends(get_db),
@@ -248,14 +260,20 @@ def list_orders(
     if page_size > 200:
         page_size = 200
 
-    q = db.query(Order, User).join(User, User.id == Order.user_id)
+    q = db.query(Order, User).outerjoin(User, User.id == Order.user_id)
 
     if api_key:
         q = q.filter(User.api_key == api_key)
+    if raw_api_key:
+        q = q.filter(Order.raw_api_key == raw_api_key)
     if device_id:
         q = q.filter(Order.device_id == device_id)
+    if device_name:
+        q = q.filter(Order.device_name.like(f"%{device_name}%"))
     if match_id is not None:
         q = q.filter(Order.match_id == match_id)
+    if parse_status:
+        q = q.filter(Order.parse_status == parse_status)
 
     total = q.count()
     items = (
@@ -273,9 +291,12 @@ def list_orders(
             "orders": [
                 {
                     "id": o.id,
-                    "api_key": u.api_key,
+                    "api_key": u.api_key if u else None,
+                    "raw_api_key": o.raw_api_key,
+                    "has_user": u is not None,
                     "user_id": o.user_id,
                     "device_id": o.device_id,
+                    "device_name": o.device_name,
                     "match_id": o.match_id,
                     "ticket_count": o.ticket_count,
                     "order_names": o.order_names,
@@ -283,6 +304,10 @@ def list_orders(
                     "order_phones": o.order_phones,
                     "order_region": o.order_region,
                     "order_price": o.order_price,
+                    "type": o.type,
+                    "raw_payload": o.raw_payload,
+                    "parse_status": o.parse_status,
+                    "parse_error": o.parse_error,
                     "created_at": o.created_at.timestamp() if o.created_at else None,
                 }
                 for (o, u) in items
