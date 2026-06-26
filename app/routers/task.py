@@ -29,14 +29,14 @@ def _clean_int(req: dict, key: str, default: int = 0) -> tuple[int, str | None]:
         return default, f"invalid int field: {key}"
 
 
-def _update_device_name_if_known(db: Session, user_id: int, device_id: str | None, device_name: str | None) -> None:
+def _touch_device_if_known(db: Session, user_id: int, device_id: str | None) -> str | None:
     if not device_id:
-        return
+        return None
     device = db.query(Device).filter_by(user_id=user_id, device_id=device_id).first()
     if device:
         device.last_seen = now_cn()
-        if device_name:
-            device.device_name = device_name
+        return device.device_name
+    return None
 
 
 @router.post("/task/check")
@@ -48,7 +48,6 @@ async def task_check(request: Request, db: Session = Depends(get_db)):
     now = int(time.time())
     api_key = str(req.get("api_key") or "")
     device_id = str(req.get("device_id") or "")
-    device_name = str(req.get("device_name") or "").strip() or None
 
     user = db.query(User).filter_by(api_key=api_key).first()
     if not user:
@@ -59,8 +58,6 @@ async def task_check(request: Request, db: Session = Depends(get_db)):
         return fail(-1003, msg="device not bound", encrypt=True)
 
     device.last_seen = now_cn()
-    if device_name:
-        device.device_name = device_name
     db.commit()
 
     return success(
@@ -82,7 +79,7 @@ async def task_order(request: Request, db: Session = Depends(get_db)):
     now = int(time.time())
     api_key = _clean_str(req.get("api_key"))
     device_id = _clean_str(req.get("device_id"))
-    device_name = _clean_str(req.get("device_name"))
+    device_name = None
     errors: list[str] = []
 
     user = db.query(User).filter_by(api_key=api_key).first() if api_key else None
@@ -122,7 +119,7 @@ async def task_order(request: Request, db: Session = Depends(get_db)):
             errors.append(f"missing field: {key}")
 
     if user:
-        _update_device_name_if_known(db, user.id, device_id, device_name)
+        device_name = _touch_device_if_known(db, user.id, device_id)
 
     parse_status = "ok"
     if not user:

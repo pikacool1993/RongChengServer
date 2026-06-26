@@ -18,12 +18,10 @@ class AuthRequest(BaseModel):
 class TaskCheckRequest(BaseModel):
     api_key: str
     device_id: str
-    device_name: str | None = None
 
 class TaskOrderRequest(BaseModel):
     api_key: str | None = None
     device_id: str | None = None
-    device_name: str | None = None
     match_id: int | None = None
     ticket_count: int | None = None
     order_names: str | None = None
