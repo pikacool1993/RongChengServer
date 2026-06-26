@@ -1,16 +1,16 @@
 {
-  "id": 85,
+  "id": 84,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
-  "team1_name": "成都蓉城希拉谷",
+  "team1_name": "成都蓉城",
   "team2_color": "rgba(234, 85, 4, 1)",
   "team2_id": 40,
   "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024422/山东泰山.png",
-  "team2_name": "广州蒲公英",
-  "time_e": 1782309600,
-  "time_s": 1782302400,
+  "team2_name": "山东泰山",
+  "time_e": 1780148100,
+  "time_s": 1780140900,
   "sale": 1,
-  "line_s_time": 1782108000,
-  "line_e_time": 1782280800
+  "line_s_time": 1779948000,
+  "line_e_time": 1780119300
 }

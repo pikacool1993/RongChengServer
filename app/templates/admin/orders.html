@@ -2,176 +2,185 @@
 {% block content %}
   <style>
     .orders-table {
-      min-width: 1880px;
-      font-size: 0.82rem;
+      min-width: 1520px;
+      font-size: 13px;
     }
+
     .orders-table th,
     .orders-table td {
       white-space: nowrap;
       vertical-align: middle;
+      padding: 10px 12px;
     }
-    .orders-table .text-truncate-cell {
-      max-width: 160px;
+
+    .cell-clip {
+      max-width: 170px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .orders-table .text-full-cell {
-      min-width: 120px;
-      max-width: 300px;
+
+    .cell-name,
+    .cell-region {
+      max-width: 220px;
       white-space: normal;
       word-break: break-word;
-      overflow-wrap: anywhere;
       line-height: 1.45;
     }
-    .orders-table .phone-cell {
-      min-width: 120px;
-      white-space: nowrap;
+
+    .metric {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: #eef4ff;
+      color: #1e40af;
+      border: 1px solid #d8e6ff;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
     }
-    .raw-payload {
-      max-width: 520px;
-      max-height: 240px;
-      overflow: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
+
+    .type-badge {
+      display: inline-block;
+      min-width: 44px;
+      text-align: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #e7f8ef;
+      color: #166534;
+      font-weight: 750;
+      font-size: 12px;
+    }
+
+    .empty-state {
+      padding: 42px 20px;
+      color: #687587;
+      text-align: center;
     }
   </style>
 
-  <div class="card border-0 shadow-soft">
-    <div class="card-body">
-      <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
-        <div>
-          <div class="fw-semibold fs-5">订单</div>
-          <div class="text-muted small">总数：{{ total }}，页码：{{ page }}，票数合计：{{ tickets_sum }}</div>
+  <section class="page-panel">
+    <div class="page-panel-header">
+      <div>
+        <h1 class="page-title">订单管理</h1>
+        <div class="page-subtitle">
+          共 {{ total }} 条订单，当前第 {{ page }} 页，票数合计 {{ tickets_sum }}
         </div>
-        <form method="post" action="/admin-ui/orders/delete-all" class="d-inline"
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="metric">票数 {{ tickets_sum }}</span>
+        <form method="post" action="/admin-ui/orders/delete-all"
               onsubmit="return confirm('确认删除全部订单？此操作不可恢复。');">
-          <button class="btn btn-outline-danger btn-sm" type="submit" {% if total == 0 %}disabled{% endif %}>删除全部订单</button>
+          <button class="btn btn-outline-danger btn-sm" type="submit" {% if total == 0 %}disabled{% endif %}>删除全部</button>
         </form>
       </div>
+    </div>
 
-      <form class="row g-2 mb-3" method="get" action="/admin-ui/orders">
-        <div class="col-md-2">
-          <input class="form-control" name="api_key" placeholder="用户密钥" value="{{ filters.api_key }}">
+    <div class="toolbar">
+      <form class="row g-2 align-items-center" method="get" action="/admin-ui/orders">
+        <div class="col-12 col-md-2">
+          <input class="form-control" name="api_key" placeholder="密钥" value="{{ filters.api_key }}">
         </div>
-        <div class="col-md-2">
-          <input class="form-control" name="raw_api_key" placeholder="原始密钥" value="{{ filters.raw_api_key }}">
-        </div>
-        <div class="col-md-2">
-          <input class="form-control" name="device_id" placeholder="设备ID" value="{{ filters.device_id }}">
-        </div>
-        <div class="col-md-2">
+        <div class="col-12 col-md-2">
           <input class="form-control" name="device_name" placeholder="设备名" value="{{ filters.device_name }}">
         </div>
-        <div class="col-md-1">
+        <div class="col-6 col-md-2">
           <input class="form-control" name="match_id" placeholder="比赛ID" value="{{ filters.match_id }}">
         </div>
-        <div class="col-md-1">
+        <div class="col-6 col-md-2">
           <select class="form-select" name="parse_status">
-            <option value="" {% if not filters.parse_status %}selected{% endif %}>全部</option>
-            <option value="ok" {% if filters.parse_status == "ok" %}selected{% endif %}>ok</option>
-            <option value="partial" {% if filters.parse_status == "partial" %}selected{% endif %}>partial</option>
-            <option value="error" {% if filters.parse_status == "error" %}selected{% endif %}>error</option>
-            <option value="unknown_key" {% if filters.parse_status == "unknown_key" %}selected{% endif %}>unknown_key</option>
+            <option value="" {% if not filters.parse_status %}selected{% endif %}>全部状态</option>
+            <option value="ok" {% if filters.parse_status == "ok" %}selected{% endif %}>正常</option>
+            <option value="partial" {% if filters.parse_status == "partial" %}selected{% endif %}>部分解析</option>
+            <option value="error" {% if filters.parse_status == "error" %}selected{% endif %}>异常</option>
+            <option value="unknown_key" {% if filters.parse_status == "unknown_key" %}selected{% endif %}>未知密钥</option>
           </select>
         </div>
-        <div class="col-md-1">
+        <div class="col-6 col-md-1">
           <input class="form-control" name="page_size" type="number" min="1" max="200" value="{{ page_size }}">
         </div>
-        <div class="col-md-1 d-grid">
+        <div class="col-6 col-md-1 d-grid">
           <button class="btn btn-primary" type="submit">筛选</button>
         </div>
+        <div class="col-12 col-md-2">
+          <a class="btn btn-outline-secondary w-100" href="/admin-ui/orders">重置</a>
+        </div>
       </form>
+    </div>
 
-      <div class="table-responsive">
-        <table class="table table-sm align-middle table-hover orders-table">
-          <thead class="table-light">
-            <tr>
-              <th>ID</th>
-              <th>关联用户</th>
-              <th>用户密钥</th>
-              <th>原始密钥</th>
-              <th>设备ID</th>
-              <th>设备名</th>
-              <th>比赛ID</th>
-              <th>票数</th>
-              <th>姓名</th>
-              <th>区域</th>
-              <th>价格</th>
-              <th>手机号</th>
-              <th>类型</th>
-              <th>解析状态</th>
-              <th>解析错误</th>
-              <th>创建时间</th>
-              <th>原始 payload</th>
-              <th class="text-end">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for o in orders %}
-            <tr>
-              <td class="text-muted">{{ o.id }}</td>
-              <td>
-                {% if o.has_user %}
-                  <span class="badge text-bg-success">是</span>
-                {% else %}
-                  <span class="badge text-bg-warning">否</span>
-                {% endif %}
-              </td>
-              <td><div class="text-truncate-cell" title="{{ o.api_key or '' }}"><code>{{ o.api_key or "" }}</code></div></td>
-              <td><div class="text-truncate-cell" title="{{ o.raw_api_key or '' }}"><code>{{ o.raw_api_key or "" }}</code></div></td>
-              <td><div class="text-truncate-cell" title="{{ o.device_id or '' }}">{{ o.device_id or "" }}</div></td>
-              <td><div class="text-truncate-cell" title="{{ o.device_name or '' }}">{{ o.device_name or "" }}</div></td>
-              <td>{{ o.match_id if o.match_id is not none else "" }}</td>
-              <td class="fw-semibold">{{ o.ticket_count }}</td>
-              <td><div class="text-full-cell">{{ o.order_names or "" }}</div></td>
-              <td><div class="text-full-cell">{{ o.order_region or "" }}</div></td>
-              <td><div class="text-truncate-cell" title="{{ o.order_price or '' }}">{{ o.order_price or "" }}</div></td>
-              <td><div class="phone-cell">{{ o.order_phones or "" }}</div></td>
-              <td><span class="badge text-bg-secondary">{{ o.type_label }}</span></td>
-              <td><code>{{ o.parse_status or "" }}</code></td>
-              <td><div class="text-full-cell">{{ o.parse_error or "" }}</div></td>
-              <td class="text-muted"><div class="text-truncate-cell" title="{{ o.created_at }}">{{ o.created_at }}</div></td>
-              <td>
-                {% if o.raw_payload %}
-                  <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#payload-{{ o.id }}">
-                    查看
-                  </button>
-                {% else %}
-                  <span class="text-muted">-</span>
-                {% endif %}
-              </td>
-              <td class="text-end">
-                <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
-                      onsubmit="return confirm('确认删除该订单？');">
-                  <input type="hidden" name="next"
-                         value="/admin-ui/orders?api_key={{ filters.api_key }}&raw_api_key={{ filters.raw_api_key }}&device_id={{ filters.device_id }}&device_name={{ filters.device_name }}&match_id={{ filters.match_id }}&parse_status={{ filters.parse_status }}&page={{ page }}&page_size={{ page_size }}">
-                  <button class="btn btn-outline-danger btn-sm" type="submit">删除</button>
-                </form>
-              </td>
-            </tr>
-            {% if o.raw_payload %}
-            <tr class="collapse" id="payload-{{ o.id }}">
-              <td colspan="18">
-                <pre class="raw-payload bg-light border rounded p-2 mb-0">{{ o.raw_payload }}</pre>
-              </td>
-            </tr>
-            {% endif %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle orders-table">
+        <thead>
+          <tr>
+            <th>密钥</th>
+            <th>设备名</th>
+            <th>比赛ID</th>
+            <th>票数</th>
+            <th>姓名</th>
+            <th>区域</th>
+            <th>价格</th>
+            <th>手机号</th>
+            <th>类型</th>
+            <th>创建时间</th>
+            <th>首开延迟时间</th>
+            <th>首开启动时间</th>
+            <th>首开结束时间</th>
+            <th class="text-end">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td>
+              <div class="cell-clip" title="{{ o.api_key or o.raw_api_key or '' }}">
+                <code>{{ o.api_key or o.raw_api_key or "" }}</code>
+              </div>
+            </td>
+            <td><div class="cell-clip" title="{{ o.device_name or '' }}">{{ o.device_name or "" }}</div></td>
+            <td>{{ o.match_id if o.match_id is not none else "" }}</td>
+            <td class="fw-bold">{{ o.ticket_count }}</td>
+            <td><div class="cell-name">{{ o.order_names or "" }}</div></td>
+            <td><div class="cell-region">{{ o.order_region or "" }}</div></td>
+            <td><div class="cell-clip" title="{{ o.order_price or '' }}">{{ o.order_price or "" }}</div></td>
+            <td>{{ o.order_phones or "" }}</td>
+            <td><span class="type-badge">{{ o.type_label }}</span></td>
+            <td><div class="cell-clip" title="{{ o.created_at }}">{{ o.created_at }}</div></td>
+            <td>{{ o.first_delay }}</td>
+            <td><div class="cell-clip" title="{{ o.first_start_t or '' }}">{{ o.first_start_t or "" }}</div></td>
+            <td><div class="cell-clip" title="{{ o.first_end_t or '' }}">{{ o.first_end_t or "" }}</div></td>
+            <td class="text-end">
+              <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
+                    onsubmit="return confirm('确认删除该订单？');">
+                <input type="hidden" name="next"
+                       value="/admin-ui/orders?api_key={{ filters.api_key }}&device_name={{ filters.device_name }}&match_id={{ filters.match_id }}&parse_status={{ filters.parse_status }}&page={{ page }}&page_size={{ page_size }}">
+                <button class="btn btn-outline-danger btn-sm" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="14">
+              <div class="empty-state">暂无订单数据</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
+    <div class="d-flex justify-content-between align-items-center gap-2 p-3 border-top">
+      <div class="text-muted small">第 {{ page }} 页</div>
       <div class="d-flex gap-2">
         {% if page > 1 %}
           <a class="btn btn-outline-secondary btn-sm"
-             href="/admin-ui/orders?api_key={{ filters.api_key }}&raw_api_key={{ filters.raw_api_key }}&device_id={{ filters.device_id }}&device_name={{ filters.device_name }}&match_id={{ filters.match_id }}&parse_status={{ filters.parse_status }}&page={{ page - 1 }}&page_size={{ page_size }}">上一页</a>
+             href="/admin-ui/orders?api_key={{ filters.api_key }}&device_name={{ filters.device_name }}&match_id={{ filters.match_id }}&parse_status={{ filters.parse_status }}&page={{ page - 1 }}&page_size={{ page_size }}">上一页</a>
         {% endif %}
         {% if (page * page_size) < total %}
           <a class="btn btn-outline-secondary btn-sm"
-             href="/admin-ui/orders?api_key={{ filters.api_key }}&raw_api_key={{ filters.raw_api_key }}&device_id={{ filters.device_id }}&device_name={{ filters.device_name }}&match_id={{ filters.match_id }}&parse_status={{ filters.parse_status }}&page={{ page + 1 }}&page_size={{ page_size }}">下一页</a>
+             href="/admin-ui/orders?api_key={{ filters.api_key }}&device_name={{ filters.device_name }}&match_id={{ filters.match_id }}&parse_status={{ filters.parse_status }}&page={{ page + 1 }}&page_size={{ page_size }}">下一页</a>
         {% endif %}
       </div>
     </div>
-  </div>
+  </section>
 {% endblock %}
