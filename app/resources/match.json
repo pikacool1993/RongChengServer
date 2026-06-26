@@ -1,5 +1,5 @@
 {
-  "id": 84,
+  "id": 88,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
@@ -7,10 +7,10 @@
   "team2_color": "rgba(234, 85, 4, 1)",
   "team2_id": 40,
   "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024422/山东泰山.png",
-  "team2_name": "山东泰山",
-  "time_e": 1780148100,
-  "time_s": 1780140900,
+  "team2_name": "重庆铜梁龙",
+  "time_e": 1783778400,
+  "time_s": 1783771200,
   "sale": 1,
-  "line_s_time": 1779948000,
-  "line_e_time": 1780119300
+  "line_s_time": 1783576800,
+  "line_e_time": 1783749600
 }
