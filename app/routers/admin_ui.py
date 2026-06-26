@@ -7,7 +7,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -242,15 +241,24 @@ def orders_page(
     if parse_status:
         q = q.filter(Order.parse_status == parse_status)
 
-    total = q.count()
-    tickets_sum_value = q.with_entities(func.coalesce(func.sum(Order.ticket_count), 0)).scalar() or 0
-    items = (
+    ordered_items = (
         q
         .order_by(Order.created_at.desc(), Order.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
         .all()
     )
+    deduped_items = []
+    seen_order_cards: set[str] = set()
+    for o, u in ordered_items:
+        order_cards = (o.order_cards or "").strip()
+        if order_cards:
+            if order_cards in seen_order_cards:
+                continue
+            seen_order_cards.add(order_cards)
+        deduped_items.append((o, u))
+
+    total = len(deduped_items)
+    tickets_sum_value = sum((o.ticket_count or 0) for o, _ in deduped_items)
+    items = deduped_items[(page - 1) * page_size: page * page_size]
 
     device_keys = [(o.user_id, o.device_id) for o, _ in items if o.device_id]
     device_id_map: dict[tuple[int, str], int] = {}
