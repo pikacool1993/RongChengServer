@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import os
 from typing import Any
 
@@ -12,13 +13,42 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ..database import get_db
 from ..env import load_env
-from ..models import Config, Device, Order, User, now_cn
+from ..models import Config, Device, Order, User, UserConfig, now_cn
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["admin-ui"])
 
 templates = Jinja2Templates(directory=str(os.path.join(os.path.dirname(__file__), "..", "templates")))
+
+
+def _normalize_role(role: int | None) -> int:
+    return 1 if role == 1 else 0
+
+
+def _normalize_config_text(config: str | None) -> str:
+    config_text = (config or "").strip()
+    if config_text:
+        json.loads(config_text)
+    return config_text
+
+
+def _format_config_text(config_text: str | None) -> str:
+    if not config_text:
+        return ""
+    try:
+        return json.dumps(json.loads(config_text), ensure_ascii=False, indent=2)
+    except json.JSONDecodeError:
+        return config_text
+
+
+def _upsert_user_config(db: Session, user: User, config_text: str) -> None:
+    row = db.query(UserConfig).filter(UserConfig.user_id == user.id).first()
+    if row:
+        row.config = config_text
+        row.updated_at = now_cn()
+    elif config_text:
+        db.add(UserConfig(user_id=user.id, config=config_text))
 
 
 def _require_login(request: Request) -> bool:
@@ -81,12 +111,22 @@ def dashboard(request: Request):
 
 
 @router.get("/admin-ui/users", response_class=HTMLResponse)
-def users_page(request: Request, db: Session = Depends(get_db)):
+def users_page(request: Request, error: str | None = None, db: Session = Depends(get_db)):
     if not _require_login(request):
         return _redirect_to_login("/admin-ui/users")
 
     users = db.query(User).order_by(User.created_at.desc()).all()
-    return templates.TemplateResponse("admin/users.html", {"request": request, "users": users})
+    user_ids = [u.id for u in users]
+    config_map: dict[int, str] = {}
+    if user_ids:
+        rows = db.query(UserConfig).filter(UserConfig.user_id.in_(user_ids)).all()
+        config_map = {row.user_id: row.config or "" for row in rows}
+
+    err_msg = "配置必须是合法 JSON。" if error == "invalid_json" else None
+    return templates.TemplateResponse(
+        "admin/users.html",
+        {"request": request, "users": users, "config_map": config_map, "error": err_msg},
+    )
 
 
 @router.post("/admin-ui/users/create")
@@ -96,28 +136,45 @@ def users_create(
     api_key: str = Form(...),
     lark_key: str = Form(""),
     max_devices: int = Form(1),
+    role: int = Form(0),
+    config: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not _require_login(request):
         return _redirect_to_login("/admin-ui/users")
+
+    try:
+        config_text = _normalize_config_text(config)
+    except json.JSONDecodeError:
+        return RedirectResponse(url="/admin-ui/users?error=invalid_json", status_code=302)
 
     existing = db.query(User).filter(User.api_key == api_key).first()
     if existing:
         existing.name = name
         existing.lark_key = lark_key or None
         existing.max_devices = max_devices
+        existing.role = _normalize_role(role)
         existing.updated_at = now_cn()
+        _upsert_user_config(db, existing, config_text)
         db.commit()
         return RedirectResponse(url="/admin-ui/users", status_code=302)
 
-    u = User(name=name, api_key=api_key, lark_key=lark_key or None, max_devices=max_devices)
+    u = User(
+        name=name,
+        api_key=api_key,
+        lark_key=lark_key or None,
+        max_devices=max_devices,
+        role=_normalize_role(role),
+    )
     db.add(u)
+    db.flush()
+    _upsert_user_config(db, u, config_text)
     db.commit()
     return RedirectResponse(url="/admin-ui/users", status_code=302)
 
 
 @router.get("/admin-ui/users/{api_key}", response_class=HTMLResponse)
-def users_edit_page(request: Request, api_key: str, db: Session = Depends(get_db)):
+def users_edit_page(request: Request, api_key: str, error: str | None = None, db: Session = Depends(get_db)):
     if not _require_login(request):
         return _redirect_to_login(f"/admin-ui/users/{api_key}")
 
@@ -125,7 +182,17 @@ def users_edit_page(request: Request, api_key: str, db: Session = Depends(get_db
     if not u:
         return RedirectResponse(url="/admin-ui/users", status_code=302)
 
-    return templates.TemplateResponse("admin/user_edit.html", {"request": request, "user": u})
+    row = db.query(UserConfig).filter(UserConfig.user_id == u.id).first()
+    err_msg = "配置必须是合法 JSON。" if error == "invalid_json" else None
+    return templates.TemplateResponse(
+        "admin/user_edit.html",
+        {
+            "request": request,
+            "user": u,
+            "config": _format_config_text(row.config if row else ""),
+            "error": err_msg,
+        },
+    )
 
 
 @router.post("/admin-ui/users/{api_key}/update")
@@ -135,17 +202,26 @@ def users_update(
     name: str = Form(""),
     lark_key: str = Form(""),
     max_devices: int = Form(1),
+    role: int = Form(0),
+    config: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not _require_login(request):
         return _redirect_to_login(f"/admin-ui/users/{api_key}")
+
+    try:
+        config_text = _normalize_config_text(config)
+    except json.JSONDecodeError:
+        return RedirectResponse(url=f"/admin-ui/users/{api_key}?error=invalid_json", status_code=302)
 
     u = db.query(User).filter(User.api_key == api_key).first()
     if u:
         u.name = name
         u.lark_key = lark_key or None
         u.max_devices = max_devices
+        u.role = _normalize_role(role)
         u.updated_at = now_cn()
+        _upsert_user_config(db, u, config_text)
         db.commit()
     return RedirectResponse(url="/admin-ui/users", status_code=302)
 
@@ -157,6 +233,7 @@ def users_delete(request: Request, api_key: str, db: Session = Depends(get_db)):
 
     u = db.query(User).filter(User.api_key == api_key).first()
     if u:
+        db.query(UserConfig).filter(UserConfig.user_id == u.id).delete(synchronize_session=False)
         db.delete(u)
         db.commit()
     return RedirectResponse(url="/admin-ui/users", status_code=302)

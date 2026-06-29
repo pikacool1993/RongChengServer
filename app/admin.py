@@ -1,12 +1,19 @@
 ﻿import os
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .schemas import AdminCreateUserRequest, AdminCreateConfigRequest, AdminUpdateUserRequest
+from .schemas import (
+    AdminCreateUserRequest,
+    AdminCreateConfigRequest,
+    AdminUpdateUserRequest,
+    AdminUpsertUserConfigRequest,
+)
 from .database import get_db
-from .models import Config, User, Device, Order
+from .models import Config, User, UserConfig, Device, Order
 from .response import success, fail
 from .env import load_env
 
@@ -28,6 +35,10 @@ def verify_password(password: str):
     if password != ADMIN_PASSWORD:
         return fail(msg="Wrong password")
     return None
+
+
+def normalize_role(role: int | None) -> int:
+    return 1 if role == 1 else 0
 
 # =========================
 # 创建更新配置
@@ -69,6 +80,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
     api_key = req.api_key
     lark_key = req.lark_key
     max_devices = req.max_devices
+    role = normalize_role(req.role)
     password = req.password
 
     pwd_error = verify_password(password)
@@ -80,6 +92,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
         existing.name = name
         existing.lark_key = lark_key
         existing.max_devices = max_devices
+        existing.role = role
         db.commit()
         db.refresh(existing)
 
@@ -89,10 +102,11 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
             "api_key": existing.api_key,
             "lark_key": existing.lark_key,
             "max_devices": existing.max_devices,
+            "role": existing.role or 0,
             "created_at": existing.created_at.timestamp()
         }, encrypt=False)
 
-    u = User(name=name, api_key=api_key, lark_key=lark_key, max_devices=max_devices)
+    u = User(name=name, api_key=api_key, lark_key=lark_key, max_devices=max_devices, role=role)
     db.add(u)
     db.commit()
     db.refresh(u)
@@ -103,6 +117,7 @@ def create_user(req: AdminCreateUserRequest, db: Session = Depends(get_db)):
         "api_key": u.api_key,
         "lark_key": u.lark_key,
         "max_devices": u.max_devices,
+        "role": u.role or 0,
         "created_at": u.created_at.timestamp()
     }, encrypt=False)
 
@@ -142,6 +157,8 @@ def update_user(req: AdminUpdateUserRequest, db: Session = Depends(get_db)):
         u.lark_key = req.lark_key
     if req.max_devices is not None:
         u.max_devices = req.max_devices
+    if req.role is not None:
+        u.role = normalize_role(req.role)
     u.updated_at = func.now()
     db.commit()
     db.refresh(u)
@@ -153,6 +170,7 @@ def update_user(req: AdminUpdateUserRequest, db: Session = Depends(get_db)):
             "api_key": u.api_key,
             "lark_key": u.lark_key,
             "max_devices": u.max_devices,
+            "role": u.role or 0,
             "created_at": u.created_at.timestamp(),
             "updated_at": u.updated_at.timestamp() if u.updated_at else None,
         },
@@ -177,12 +195,75 @@ def list_users(password: str, db: Session = Depends(get_db)):
                 "api_key": u.api_key,
                 "lark_key": u.lark_key,
                 "max_devices": u.max_devices,
+                "role": u.role or 0,
                 "created_at": u.created_at.timestamp(),
                 "updated_at": u.updated_at.timestamp() if u.updated_at else None,
             }
             for u in users
         ]
     }, encrypt=False)
+
+
+# =========================
+# api_key 对应配置
+# =========================
+@router.post("/user/config")
+def upsert_user_config(req: AdminUpsertUserConfigRequest, db: Session = Depends(get_db)):
+    pwd_error = verify_password(req.password)
+    if pwd_error:
+        return pwd_error
+
+    u = db.query(User).filter(User.api_key == req.api_key).first()
+    if not u:
+        return fail(msg="User not found")
+
+    config_text = (req.config or "").strip()
+    if config_text:
+        try:
+            json.loads(config_text)
+        except json.JSONDecodeError:
+            return fail(msg="Config must be valid JSON")
+
+    row = db.query(UserConfig).filter(UserConfig.user_id == u.id).first()
+    if row:
+        row.config = config_text
+        row.updated_at = func.now()
+    else:
+        row = UserConfig(user_id=u.id, config=config_text)
+        db.add(row)
+
+    db.commit()
+    db.refresh(row)
+    return success(
+        {
+            "api_key": u.api_key,
+            "config": json.loads(row.config) if row.config else {},
+            "updated_at": row.updated_at.timestamp() if row.updated_at else None,
+        },
+        encrypt=False,
+    )
+
+
+@router.get("/user/config")
+def get_user_config(api_key: str, password: str, db: Session = Depends(get_db)):
+    pwd_error = verify_password(password)
+    if pwd_error:
+        return pwd_error
+
+    u = db.query(User).filter(User.api_key == api_key).first()
+    if not u:
+        return fail(msg="User not found")
+
+    row = db.query(UserConfig).filter(UserConfig.user_id == u.id).first()
+    config_text = row.config if row else ""
+    return success(
+        {
+            "api_key": u.api_key,
+            "config": json.loads(config_text) if config_text else {},
+            "updated_at": row.updated_at.timestamp() if row and row.updated_at else None,
+        },
+        encrypt=False,
+    )
 
 # =========================
 # 查看某个用户的设备

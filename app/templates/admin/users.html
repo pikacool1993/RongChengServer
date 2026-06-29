@@ -6,11 +6,14 @@
         <div class="card-body">
         <div class="fw-semibold fs-5 mb-3">用户</div>
         <div class="text-muted small mb-3">创建或更新用户（同密钥会覆盖更新）。</div>
+        {% if error %}
+          <div class="alert alert-danger py-2">{{ error }}</div>
+        {% endif %}
         <form class="row g-2" method="post" action="/admin-ui/users/create">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <input class="form-control" name="name" placeholder="名称">
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <input class="form-control" name="api_key" placeholder="密钥" required>
           </div>
           <div class="col-md-2">
@@ -18,6 +21,15 @@
           </div>
           <div class="col-md-2">
             <input class="form-control" name="max_devices" type="number" min="1" value="1">
+          </div>
+          <div class="col-md-2">
+            <select class="form-select" name="role">
+              <option value="0" selected>普通用户</option>
+              <option value="1">管理员</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <textarea class="form-control font-monospace" name="config" rows="3" placeholder='API Key 配置 JSON，例如 {"enable_feature": true}'></textarea>
           </div>
           <div class="col-md-12 d-grid d-md-block">
             <button class="btn btn-primary" type="submit">保存</button>
@@ -40,6 +52,8 @@
                 <th>密钥</th>
                 <th>飞书Key</th>
                 <th>最大设备数</th>
+                <th>权限</th>
+                <th>配置</th>
                 <th>创建时间</th>
                 <th>更新时间</th>
                 <th class="text-end">操作</th>
@@ -53,6 +67,21 @@
                 <td><code>{{ u.api_key }}</code></td>
                 <td><code>{{ u.lark_key or "" }}</code></td>
                 <td>{{ u.max_devices }}</td>
+                <td>
+                  {% if u.role == 1 %}
+                    <span class="badge text-bg-primary">管理员</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">普通用户</span>
+                  {% endif %}
+                </td>
+                <td class="text-break" style="max-width: 260px;">
+                  {% set cfg = config_map.get(u.id, "") %}
+                  {% if cfg %}
+                    <code>{{ cfg[:80] }}{% if cfg|length > 80 %}...{% endif %}</code>
+                  {% else %}
+                    <span class="text-muted">（空）</span>
+                  {% endif %}
+                </td>
                 <td class="text-muted">{{ u.created_at }}</td>
                 <td class="text-muted">{{ u.updated_at }}</td>
                 <td class="text-end">

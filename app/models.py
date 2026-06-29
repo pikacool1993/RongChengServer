@@ -26,6 +26,17 @@ class User(Base):
     api_key = Column(String(64), unique=True, index=True)
     lark_key = Column(String(128), nullable=True)
     max_devices = Column(Integer, default=1)
+    role = Column(Integer, default=0)
+    created_at = Column(DateTime, default=now_cn)
+    updated_at = Column(DateTime, default=now_cn)
+
+
+class UserConfig(Base):
+    __tablename__ = "user_configs"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
+    config = Column(Text, nullable=True)
     created_at = Column(DateTime, default=now_cn)
     updated_at = Column(DateTime, default=now_cn)
 
@@ -72,6 +83,7 @@ def ensure_schema_columns(engine) -> None:
     additions = {
         "users": {
             "lark_key": "VARCHAR(128) NULL",
+            "role": "INT NULL DEFAULT 0",
         },
         "devices": {
             "device_name": "VARCHAR(128) NULL",

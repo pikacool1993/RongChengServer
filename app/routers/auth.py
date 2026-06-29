@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 import time
+import json
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Device, User, now_cn
+from ..models import Device, User, UserConfig, now_cn
 from ..response import fail, success
 from .encrypted import read_encrypted_request
 
 router = APIRouter(tags=["auth"])
+
+
+def _load_user_config(raw_config: str | None):
+    if not raw_config:
+        return {}
+    try:
+        return json.loads(raw_config)
+    except json.JSONDecodeError:
+        return raw_config
 
 
 @router.post("/auth")
@@ -45,10 +55,14 @@ async def auth(request: Request, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(device)
 
+    user_config = db.query(UserConfig).filter(UserConfig.user_id == user.id).first()
+
     return success(
         {
             "api_key": user.api_key,
             "lark_key": user.lark_key,
+            "role": user.role or 0,
+            "config": _load_user_config(user_config.config if user_config else None),
             "device_id": device.device_id,
             "device_name": device.device_name,
             "t": now,

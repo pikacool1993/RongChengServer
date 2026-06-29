@@ -40,6 +40,7 @@ class AdminCreateUserRequest(BaseModel):
     api_key: str
     lark_key: str | None = None
     max_devices: int
+    role: int = 0
 
 class AdminUpdateUserRequest(BaseModel):
     password: str
@@ -47,8 +48,14 @@ class AdminUpdateUserRequest(BaseModel):
     name: str | None = None
     lark_key: str | None = None
     max_devices: int | None = None
+    role: int | None = None
 
 class AdminCreateConfigRequest(BaseModel):
     password: str
     content: str
     match_id: int
+
+class AdminUpsertUserConfigRequest(BaseModel):
+    password: str
+    api_key: str
+    config: str | None = None

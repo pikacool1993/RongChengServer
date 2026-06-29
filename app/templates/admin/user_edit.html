@@ -16,6 +16,9 @@
       <div class="text-muted">API Key</div>
       <div><code>{{ user.api_key }}</code></div>
     </div>
+    {% if error %}
+      <div class="alert alert-danger py-2">{{ error }}</div>
+    {% endif %}
     <form method="post" action="/admin-ui/users/{{ user.api_key }}/update" class="row g-2">
       <div class="col-md-6">
         <label class="form-label">Name</label>
@@ -28,6 +31,17 @@
       <div class="col-md-3">
         <label class="form-label">Max Devices</label>
         <input class="form-control" name="max_devices" type="number" min="1" value="{{ user.max_devices }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Role</label>
+        <select class="form-select" name="role">
+          <option value="0" {% if user.role != 1 %}selected{% endif %}>普通用户</option>
+          <option value="1" {% if user.role == 1 %}selected{% endif %}>管理员</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label">API Key 配置 JSON</label>
+        <textarea class="form-control font-monospace" name="config" rows="10" placeholder='{"enable_feature": true}'>{{ config }}</textarea>
       </div>
       <div class="col-md-3 d-grid align-items-end">
         <button class="btn btn-primary mt-4" type="submit">保存</button>
