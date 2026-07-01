@@ -1,16 +1,16 @@
 {
-  "id": 88,
-  "team1_color": "rgba(202, 21, 29, 1)",
-  "team1_id": 42,
+  "id": 87,
+  "team1_color": "rgba(242, 13, 13, 1)",
+  "team1_id": 79,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
-  "team1_name": "成都蓉城",
-  "team2_color": "rgba(234, 85, 4, 1)",
-  "team2_id": 40,
-  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024422/山东泰山.png",
-  "team2_name": "重庆铜梁龙",
-  "time_e": 1783778400,
-  "time_s": 1783771200,
+  "team1_name": "成都蓉城希拉谷",
+  "team2_color": "rgba(5, 15, 129, 1)",
+  "team2_id": 59,
+  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024427/武汉三镇.png",
+  "team2_name": "武汉三镇B队",
+  "time_e": 1783173600,
+  "time_s": 1783166400,
   "sale": 1,
-  "line_s_time": 1783576800,
-  "line_e_time": 1783749600
+  "line_s_time": 1782972000,
+  "line_e_time": 1783144800
 }
