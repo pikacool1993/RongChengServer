@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>我的订单</title>
+  <style>
+    :root {
+      --page: #f3f5f4;
+      --surface: #ffffff;
+      --surface-soft: #f8faf9;
+      --ink: #17201d;
+      --muted: #68736e;
+      --line: #dfe5e2;
+      --line-strong: #cbd4d0;
+      --accent: #b4232c;
+      --accent-dark: #941b23;
+      --danger-soft: #fff0f1;
+      --shadow: 0 10px 28px rgba(22, 34, 29, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0;
+      overflow-x: hidden;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      letter-spacing: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button, input, select { font: inherit; }
+    h1, h2, p { margin: 0; }
+
+    .page-header {
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .shell {
+      width: min(100%, 1180px);
+      margin: 0 auto;
+      padding-right: max(16px, env(safe-area-inset-right));
+      padding-left: max(16px, env(safe-area-inset-left));
+    }
+
+    .header-inner {
+      display: flex;
+      min-height: 68px;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    main.shell {
+      display: grid;
+      gap: 18px;
+      padding-top: 20px;
+      padding-bottom: max(36px, env(safe-area-inset-bottom));
+    }
+
+    .filter-panel,
+    .results-panel {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .filter-panel {
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .notice {
+      margin-bottom: 14px;
+      border: 1px solid #efd5d7;
+      border-radius: 6px;
+      background: var(--danger-soft);
+      color: #8d1e25;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .filter-form {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) 180px 150px 112px;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      min-width: 0;
+      gap: 7px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .control {
+      width: 100%;
+      min-width: 0;
+      height: 44px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      outline: 0;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 11px;
+      font-size: 14px;
+    }
+
+    input.control { font-size: 16px; }
+
+    .control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(180, 35, 44, .12);
+    }
+
+    .submit-button {
+      display: inline-flex;
+      width: 112px;
+      height: 44px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .submit-button:hover { border-color: var(--accent-dark); background: var(--accent-dark); }
+
+    .results-header {
+      display: flex;
+      min-height: 58px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+    }
+
+    .results-header h2 { font-size: 15px; }
+
+    .results-summary {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 920px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    col.match { width: 10%; }
+    col.device { width: 15%; }
+    col.buyers { width: 18%; }
+    col.tickets { width: 8%; }
+    col.region { width: 18%; }
+    col.price { width: 13%; }
+    col.created { width: 18%; }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    td {
+      overflow-wrap: anywhere;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcfb; }
+
+    .numeric {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .primary-cell { font-weight: 750; }
+    .muted-cell { color: var(--muted); }
+
+    .empty-state {
+      color: var(--muted);
+      padding: 40px 20px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .pagination {
+      display: flex;
+      min-height: 60px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid var(--line);
+      background: var(--surface-soft);
+      padding: 10px 14px;
+    }
+
+    .page-status {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 7px;
+    }
+
+    .page-button {
+      display: inline-flex;
+      min-width: 82px;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .page-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .page-button:disabled { cursor: not-allowed; opacity: .45; }
+
+    @media (max-width: 860px) {
+      .filter-form {
+        grid-template-columns: minmax(0, 1fr) minmax(150px, .55fr);
+      }
+
+      .field--key { grid-column: 1 / -1; }
+      .submit-button { width: 100%; }
+    }
+
+    @media (max-width: 560px) {
+      .header-inner { min-height: 60px; }
+      h1 { font-size: 18px; }
+      main.shell { gap: 14px; padding-top: 14px; }
+      .filter-panel { padding: 14px; }
+      .filter-form { grid-template-columns: 1fr 1fr; }
+      .field--match, .field--size { min-width: 0; }
+      .submit-button { grid-column: 1 / -1; }
+      .results-header { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .pagination { align-items: stretch; flex-direction: column; }
+      .page-status { text-align: center; }
+      .page-actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .page-button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div class="shell header-inner">
+      <h1>我的订单</h1>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="filter-panel" aria-label="订单筛选">
+      {% if error %}
+        <div class="notice">{{ error }}</div>
+      {% endif %}
+
+      <form class="filter-form" id="orders-filter" method="post" action="/orders">
+        <label class="field field--key">
+          <span class="field-label">密钥</span>
+          <input class="control" name="api_key" type="text" value="{{ api_key }}" placeholder="请输入密钥" required maxlength="64" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field field--match">
+          <span class="field-label">比赛 ID</span>
+          <input class="control" name="match_id" type="text" inputmode="numeric" value="{{ match_id }}" placeholder="全部比赛" autocomplete="off">
+        </label>
+        <label class="field field--size">
+          <span class="field-label">每页条数</span>
+          <select class="control" name="page_size">
+            {% for option in page_size_options %}
+              <option value="{{ option }}"{% if option == page_size %} selected{% endif %}>{{ option }} 条</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="submit-button" type="submit" name="page" value="1">查询</button>
+      </form>
+    </section>
+
+    {% if submitted and not error %}
+      <section class="results-panel" aria-live="polite">
+        <header class="results-header">
+          <h2>订单列表</h2>
+          <p class="results-summary">共 {{ total }} 条，合计 {{ tickets_sum }} 张票</p>
+        </header>
+
+        {% if orders %}
+          <div class="table-scroll">
+            <table>
+              <colgroup>
+                <col class="match">
+                <col class="device">
+                <col class="buyers">
+                <col class="tickets">
+                <col class="region">
+                <col class="price">
+                <col class="created">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>比赛 ID</th>
+                  <th>设备名</th>
+                  <th>购票人</th>
+                  <th>票数</th>
+                  <th>区域</th>
+                  <th>价格</th>
+                  <th>创建时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for order in orders %}
+                  <tr>
+                    <td class="numeric">{{ order.match_id or '-' }}</td>
+                    <td>{{ order.device_name or '-' }}</td>
+                    <td class="primary-cell">{{ order.order_names or '-' }}</td>
+                    <td class="numeric">{{ order.ticket_count }}</td>
+                    <td>{{ order.order_region or '-' }}</td>
+                    <td>{{ order.order_price or '-' }}</td>
+                    <td class="numeric muted-cell">{{ order.created_at.strftime('%Y-%m-%d %H:%M:%S') if order.created_at else '-' }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state">没有符合条件的订单</div>
+        {% endif %}
+
+        {% if total > 0 %}
+          <footer class="pagination">
+            <span class="page-status">第 {{ page }} / {{ total_pages }} 页</span>
+            <div class="page-actions">
+              <button class="page-button" type="submit" form="orders-filter" name="page" value="{{ page - 1 }}"{% if page <= 1 %} disabled{% endif %}>← 上一页</button>
+              <button class="page-button" type="submit" form="orders-filter" name="page" value="{{ page + 1 }}"{% if page >= total_pages %} disabled{% endif %}>下一页 →</button>
+            </div>
+          </footer>
+        {% endif %}
+      </section>
+    {% endif %}
+  </main>
+</body>
+</html>
