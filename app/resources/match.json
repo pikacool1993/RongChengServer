@@ -1,16 +1,16 @@
 {
-  "id": 89,
+  "id": 90,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
   "team1_name": "成都蓉城",
-  "team2_color": "rgba(26, 120, 63, 1)",
-  "team2_id": 44,
-  "team2_logo": "https://fcscdn3.k4n.cc/upload/a28/png/2024221/北京国安.png",
-  "team2_name": "北京国安",
-  "time_e": 1785072900,
-  "time_s": 1785065700,
+  "team2_color": "rgba(27, 45, 99, 1)",
+  "team2_id": 45,
+  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024427/武汉三镇.png",
+  "team2_name": "武汉三镇",
+  "time_e": 1785592800,
+  "time_s": 1785585600,
   "sale": 1,
-  "line_s_time": 1784872800,
-  "line_e_time": 1785044100
+  "line_s_time": 1785391200,
+  "line_e_time": 1785564000
 }
