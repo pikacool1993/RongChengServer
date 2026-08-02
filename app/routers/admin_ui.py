@@ -359,6 +359,8 @@ def orders_page(
                 "has_user": u is not None,
                 "device_id": o.device_id,
                 "device_name": o.device_name,
+                "task_id": o.task_id,
+                "order_ip": o.order_ip,
                 "device_unique_id": device_id_map.get((o.user_id, o.device_id)) if o.device_id else None,
                 "match_id": o.match_id,
                 "type": o.type,

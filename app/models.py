@@ -58,8 +58,10 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     raw_api_key = Column(String(128), nullable=True, index=True)
+    task_id = Column(String(128), nullable=True, index=True)
     device_id = Column(String(128), nullable=True, index=True)
     device_name = Column(String(128), nullable=True)
+    order_ip = Column(String(45), nullable=True, index=True)
     order_names = Column(String(128), nullable=True)
     order_cards = Column(String(128), nullable=True)
     order_phones = Column(String(128), nullable=True)
@@ -71,6 +73,7 @@ class Order(Base):
     first_start_t = Column(String(128), nullable=True)
     first_end_t = Column(String(128), nullable=True)
     type = Column(Integer, default=0)
+    ticket_holders_json = Column(Text, nullable=True)
     raw_payload = Column(Text, nullable=True)
     parse_status = Column(String(32), default="ok", index=True)
     parse_error = Column(Text, nullable=True)
@@ -90,7 +93,10 @@ def ensure_schema_columns(engine) -> None:
         },
         "orders": {
             "raw_api_key": "VARCHAR(128) NULL",
+            "task_id": "VARCHAR(128) NULL",
             "device_name": "VARCHAR(128) NULL",
+            "order_ip": "VARCHAR(45) NULL",
+            "ticket_holders_json": "TEXT NULL",
             "raw_payload": "TEXT NULL",
             "parse_status": "VARCHAR(32) NULL DEFAULT 'ok'",
             "parse_error": "TEXT NULL",
@@ -102,9 +108,22 @@ def ensure_schema_columns(engine) -> None:
         if inspector.has_table(table):
             table_columns[table] = {col["name"] for col in inspector.get_columns(table)}
 
+    order_indexes = set()
+    if inspector.has_table("orders"):
+        order_indexes = {index["name"] for index in inspector.get_indexes("orders")}
+
     with engine.begin() as conn:
         for table, columns in additions.items():
+            if table not in table_columns:
+                continue
             existing = table_columns.get(table, set())
             for name, ddl in columns.items():
                 if name not in existing:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+        if inspector.has_table("orders"):
+            for index_name, column_name in {
+                "ix_orders_task_id": "task_id",
+                "ix_orders_order_ip": "order_ip",
+            }.items():
+                if index_name not in order_indexes:
+                    conn.execute(text(f"CREATE INDEX {index_name} ON orders ({column_name})"))

@@ -1,0 +1,191 @@
+from __future__ import annotations
+
+import json
+import os
+import unittest
+
+os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["ADMIN_API_TOKEN"] = "test-admin-token"
+os.environ["ADMIN_UI_SESSION_SECRET"] = "test-session-secret-that-is-long-enough"
+os.environ["AES_KEY"] = "0123456789abcdef0123456789abcdef"
+os.environ["AES_IV"] = "0123456789abcdef"
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.database import Base, get_db
+from app.crypto import aes_decrypt, aes_encrypt
+from app.main import app
+from app.models import Device, Order, User
+
+
+class V2ApiTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        cls.session_factory = sessionmaker(bind=cls.engine)
+
+    def setUp(self) -> None:
+        Base.metadata.drop_all(self.engine)
+        Base.metadata.create_all(self.engine)
+        self.db = self.session_factory()
+        self.user = User(name="V2 user", api_key="valid-key", max_devices=2)
+        self.db.add(self.user)
+        self.db.commit()
+        self.db.refresh(self.user)
+        self.db.add(Device(user_id=self.user.id, device_id="device-1", device_name="Desktop"))
+        self.db.commit()
+
+        def override_db():
+            yield self.db
+
+        app.dependency_overrides[get_db] = override_db
+        self.client = TestClient(app)
+
+    def tearDown(self) -> None:
+        app.dependency_overrides.pop(get_db, None)
+        self.db.close()
+
+    @staticmethod
+    def _encrypted(data: dict) -> dict[str, str]:
+        return {"payload": aes_encrypt(data)}
+
+    @staticmethod
+    def _decrypted_response(response) -> dict:
+        return aes_decrypt(response.json()["payload"])
+
+    def test_order_upload_requires_task_id_and_saves_structured_holders(self) -> None:
+        response = self.client.post(
+            "/v2/orders",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "task_id": "task-001",
+                    "device_id": "device-1",
+                    "order_ip": "203.0.113.10",
+                    "match_id": 86,
+                    "ticket_holders": [
+                        {
+                            "name": "张三",
+                            "card": "510000",
+                            "phone": "13800000000",
+                            "region": "A区",
+                            "price": 280,
+                        }
+                    ],
+                    "first_delay": 0,
+                    "task_type": 1,
+                }
+            ),
+        )
+
+        self.assertEqual(201, response.status_code)
+        self.assertEqual("task-001", self._decrypted_response(response)["data"]["task_id"])
+        order = self.db.query(Order).one()
+        self.assertEqual("task-001", order.task_id)
+        self.assertEqual("203.0.113.10", order.order_ip)
+        self.assertEqual(1, order.ticket_count)
+        self.assertEqual("张三", order.order_names)
+        self.assertEqual("280", order.order_price)
+        self.assertEqual("张三", json.loads(order.ticket_holders_json)[0]["name"])
+        self.assertIsNone(order.first_start_t)
+        self.assertIsNone(order.first_end_t)
+
+    def test_order_upload_rejects_removed_time_fields(self) -> None:
+        response = self.client.post(
+            "/v2/orders",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "task_id": "task-002",
+                    "device_id": "device-1",
+                    "order_ip": "203.0.113.10",
+                    "first_start_t": "2026-08-01T10:00:00+08:00",
+                }
+            ),
+        )
+
+        self.assertEqual(422, response.status_code)
+        self.assertEqual(-422, self._decrypted_response(response)["code"])
+        self.assertEqual(0, self.db.query(Order).count())
+
+    def test_order_upload_rejects_missing_task_id(self) -> None:
+        response = self.client.post(
+            "/v2/orders",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "device_id": "device-1",
+                    "order_ip": "203.0.113.10",
+                }
+            ),
+        )
+
+        self.assertEqual(422, response.status_code)
+        self.assertEqual(-422, self._decrypted_response(response)["code"])
+
+    def test_invalid_ciphertext_returns_plain_envelope_error(self) -> None:
+        response = self.client.post("/v2/orders", json={"payload": "not-base64"})
+
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(-4001, response.json()["code"])
+
+    def test_business_error_response_is_encrypted(self) -> None:
+        response = self.client.post(
+            "/v2/orders",
+            json=self._encrypted(
+                {
+                    "api_key": "unknown-key",
+                    "task_id": "task-unknown",
+                    "device_id": "device-1",
+                    "order_ip": "203.0.113.10",
+                }
+            ),
+        )
+
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(-1001, self._decrypted_response(response)["code"])
+        self.assertEqual(0, self.db.query(Order).count())
+
+    def test_order_upload_rejects_invalid_order_ip(self) -> None:
+        response = self.client.post(
+            "/v2/orders",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "task_id": "task-invalid-ip",
+                    "device_id": "device-1",
+                    "order_ip": "203.0.113.10:8080",
+                }
+            ),
+        )
+
+        self.assertEqual(422, response.status_code)
+        body = self._decrypted_response(response)
+        self.assertEqual(-422, body["code"])
+        self.assertEqual("order_ip", body["data"]["errors"][0]["field"])
+        self.assertEqual(0, self.db.query(Order).count())
+
+    def test_admin_api_uses_bearer_token_instead_of_password_query(self) -> None:
+        password_response = self.client.get(
+            "/v2/admin/users",
+            params={"password": "test-admin-token"},
+        )
+        token_response = self.client.get(
+            "/v2/admin/users",
+            headers={"Authorization": "Bearer test-admin-token"},
+        )
+
+        self.assertEqual(401, password_response.status_code)
+        self.assertEqual(200, token_response.status_code)
+        self.assertEqual(self.user.id, token_response.json()["data"]["users"][0]["id"])
+
+
+if __name__ == "__main__":
+    unittest.main()

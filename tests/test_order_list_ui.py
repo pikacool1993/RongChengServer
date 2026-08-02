@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")
+os.environ.setdefault("AES_KEY", "0123456789abcdef0123456789abcdef")
+os.environ.setdefault("AES_IV", "0123456789abcdef")
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

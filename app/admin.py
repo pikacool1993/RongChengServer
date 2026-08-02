@@ -378,6 +378,7 @@ def list_orders(
                     "user_id": o.user_id,
                     "device_id": o.device_id,
                     "device_name": o.device_name,
+                    "order_ip": o.order_ip,
                     "match_id": o.match_id,
                     "ticket_count": o.ticket_count,
                     "order_names": o.order_names,
