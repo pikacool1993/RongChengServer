@@ -108,8 +108,7 @@ def current_match_config(
     envelope: EncryptedEnvelopeV2,
     db: Session = Depends(get_db),
 ):
-    req, _ = decode_v2_payload(envelope, MatchConfigV2Request)
-    _user_or_404(db, req.api_key)
+    decode_v2_payload(envelope, MatchConfigV2Request)
     item = _match_info()
     match_id = item["id"]
     config = db.query(Config).filter_by(match_id=match_id).first()
@@ -186,7 +185,6 @@ def upload_order_v2(
         match_id=req.match_id,
         ticket_count=req.ticket_count,
         order_names=_join_holder_field(holders, "name"),
-        order_cards=_join_holder_field(holders, "card"),
         order_phones=_join_holder_field(holders, "phone"),
         order_region=_join_holder_field(holders, "region"),
         order_price=_join_holder_field(holders, "price"),

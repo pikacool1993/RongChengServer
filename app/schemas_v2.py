@@ -30,7 +30,7 @@ class TaskCheckV2Request(V2Model):
 
 
 class MatchConfigV2Request(V2Model):
-    api_key: str = Field(min_length=1, max_length=64)
+    api_key: str | None = Field(default=None, max_length=64)
 
 
 class MatchDetailV2Request(V2Model):
@@ -40,12 +40,11 @@ class MatchDetailV2Request(V2Model):
 
 class TicketHolderV2(V2Model):
     name: str = Field(min_length=1, max_length=128)
-    card: str | None = Field(default=None, max_length=128)
     phone: str | None = Field(default=None, max_length=128)
     region: str | None = Field(default=None, max_length=128)
     price: str | None = Field(default=None, max_length=128)
 
-    @field_validator("name", "card", "phone", "region", "price", mode="before")
+    @field_validator("name", "phone", "region", "price", mode="before")
     @classmethod
     def stringify_scalar(cls, value: Any) -> Any:
         if value is None or isinstance(value, str):

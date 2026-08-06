@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import unittest
+from pathlib import Path
 
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["ADMIN_API_TOKEN"] = "test-admin-token"
@@ -18,7 +19,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.crypto import aes_decrypt, aes_encrypt
 from app.main import app
-from app.models import Device, Order, User
+from app.models import Config, Device, Order, User
 
 
 class V2ApiTests(unittest.TestCase):
@@ -73,7 +74,6 @@ class V2ApiTests(unittest.TestCase):
                     "ticket_holders": [
                         {
                             "name": "张三",
-                            "card": "510000",
                             "phone": "13800000000",
                             "region": "A区",
                             "price": 280,
@@ -92,10 +92,33 @@ class V2ApiTests(unittest.TestCase):
         self.assertEqual("203.0.113.10", order.order_ip)
         self.assertEqual(1, order.ticket_count)
         self.assertEqual("张三", order.order_names)
+        self.assertIsNone(order.order_cards)
         self.assertEqual("280", order.order_price)
-        self.assertEqual("张三", json.loads(order.ticket_holders_json)[0]["name"])
+        holder = json.loads(order.ticket_holders_json)[0]
+        self.assertEqual("张三", holder["name"])
+        self.assertNotIn("card", holder)
         self.assertIsNone(order.first_start_t)
         self.assertIsNone(order.first_end_t)
+
+    def test_order_upload_rejects_removed_identity_card_field(self) -> None:
+        response = self.client.post(
+            "/v2/orders",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "task_id": "task-with-card",
+                    "device_id": "device-1",
+                    "order_ip": "203.0.113.10",
+                    "ticket_holders": [{"name": "张三", "card": "510000"}],
+                }
+            ),
+        )
+
+        self.assertEqual(422, response.status_code)
+        body = self._decrypted_response(response)
+        self.assertEqual(-422, body["code"])
+        self.assertEqual("ticket_holders.0.card", body["data"]["errors"][0]["field"])
+        self.assertEqual(0, self.db.query(Order).count())
 
     def test_order_upload_rejects_removed_time_fields(self) -> None:
         response = self.client.post(
@@ -152,6 +175,25 @@ class V2ApiTests(unittest.TestCase):
         self.assertEqual(401, response.status_code)
         self.assertEqual(-1001, self._decrypted_response(response)["code"])
         self.assertEqual(0, self.db.query(Order).count())
+
+    def test_current_match_config_does_not_require_api_key(self) -> None:
+        match_file = Path(__file__).parents[1] / "app" / "resources" / "match.json"
+        match_id = json.loads(match_file.read_text(encoding="utf-8"))["id"]
+        self.db.add(Config(match_id=match_id, content="Latest notice"))
+        self.db.commit()
+
+        for request_data in ({}, {"api_key": ""}, {"api_key": "unknown-key"}):
+            with self.subTest(request_data=request_data):
+                response = self.client.post(
+                    "/v2/matches/current/config",
+                    json=self._encrypted(request_data),
+                )
+                body = self._decrypted_response(response)
+
+                self.assertEqual(200, response.status_code)
+                self.assertEqual(0, body["code"])
+                self.assertEqual(match_id, body["data"]["info"]["id"])
+                self.assertEqual("Latest notice", body["data"]["notice"])
 
     def test_order_upload_rejects_invalid_order_ip(self) -> None:
         response = self.client.post(
