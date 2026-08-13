@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% block content %}
+  <style>
+    .live-task-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .live-task-meta { color: var(--muted); font-size: 13px; }
+    .live-task-refresh { min-width: 86px; }
+    .live-task-users { display: grid; gap: 14px; }
+    .live-task-user { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .live-task-user-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .live-task-devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .live-task-device { min-width: 0; padding: 14px 16px 16px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .live-task-device-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .live-task-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .live-task-tag { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; background: #fff; font-family: var(--bs-font-monospace); font-size: 12px; overflow-wrap: anywhere; }
+    .live-task-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+    .live-task-tag.online .live-task-dot { background: #15803d; }
+    .live-task-tag.offline .live-task-dot { background: #64748b; }
+    .live-task-empty { padding: 36px 18px; text-align: center; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    @media (max-width: 640px) { .live-task-header, .live-task-user-head, .live-task-device-head { align-items: flex-start; flex-direction: column; } .live-task-devices { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+
+  <div class="live-task-header">
+    <div>
+      <h1 class="page-title">实时任务</h1>
+      <div class="page-subtitle">按 API Key 和设备查看客户端当前任务</div>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="live-task-meta"><span id="live-task-total">0</span> 个任务</div>
+      <button class="btn btn-outline-primary btn-sm live-task-refresh" id="live-task-refresh" type="button">刷新任务</button>
+    </div>
+  </div>
+
+  <div id="live-task-root" class="live-task-users"></div>
+  <script id="live-task-initial" type="application/json">{{ groups | tojson }}</script>
+  <script>
+    (() => {
+      const root = document.getElementById("live-task-root");
+      const totalNode = document.getElementById("live-task-total");
+      const refreshButton = document.getElementById("live-task-refresh");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[char]);
+      const render = (groups) => {
+        const total = groups.reduce((sum, group) => sum + group.task_count, 0);
+        totalNode.textContent = total;
+        if (!groups.length) { root.innerHTML = '<div class="live-task-empty">暂无客户端任务</div>'; return; }
+        root.innerHTML = groups.map((group) => `
+          <section class="live-task-user">
+            <div class="live-task-user-head"><div><div class="fw-semibold">${escapeHtml(group.name || "未命名用户")}</div><code>${escapeHtml(group.api_key)}</code></div><span class="badge text-bg-primary">${group.task_count} 个任务</span></div>
+            <div class="live-task-devices">${group.devices.map((device) => `
+              <div class="live-task-device">
+                <div class="live-task-device-head"><div><div class="fw-semibold">${escapeHtml(device.device_name || "未命名设备")}</div><code>${escapeHtml(device.device_id)}</code></div><span class="badge text-bg-secondary">${device.task_count}</span></div>
+                <div class="live-task-tags">${device.tasks.map((task) => `<span class="live-task-tag ${task.status}" title="${escapeHtml(task.updated_at)}"><span class="live-task-dot"></span><span>${escapeHtml(task.task_id)}</span><span class="text-muted">${task.status === "online" ? "在线" : "离线"}</span></span>`).join("")}</div>
+              </div>
+            `).join("")}</div>
+          </section>
+        `).join("");
+      };
+      render(JSON.parse(document.getElementById("live-task-initial").textContent));
+      refreshButton.addEventListener("click", async () => {
+        refreshButton.disabled = true;
+        refreshButton.textContent = "刷新中...";
+        try {
+          const response = await fetch("/admin-ui/live-tasks/data", {cache: "no-store"});
+          if (!response.ok) throw new Error("refresh failed");
+          render((await response.json()).groups);
+          refreshButton.textContent = "已刷新";
+        } catch (_) {
+          refreshButton.textContent = "刷新失败";
+        } finally {
+          window.setTimeout(() => {
+            refreshButton.disabled = false;
+            refreshButton.textContent = "刷新任务";
+          }, 800);
+        }
+      });
+    })();
+  </script>
+{% endblock %}

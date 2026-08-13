@@ -7,6 +7,7 @@ from pathlib import Path
 
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["ADMIN_API_TOKEN"] = "test-admin-token"
+os.environ["ADMIN_PASSWORD"] = "test-admin-password"
 os.environ["ADMIN_UI_SESSION_SECRET"] = "test-session-secret-that-is-long-enough"
 os.environ["AES_KEY"] = "0123456789abcdef0123456789abcdef"
 os.environ["AES_IV"] = "0123456789abcdef"
@@ -19,7 +20,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.crypto import aes_decrypt, aes_encrypt
 from app.main import app
-from app.models import Config, Device, Order, User
+from app.models import ClientTask, Config, Device, Order, User
 
 
 class V2ApiTests(unittest.TestCase):
@@ -194,6 +195,117 @@ class V2ApiTests(unittest.TestCase):
                 self.assertEqual(0, body["code"])
                 self.assertEqual(match_id, body["data"]["info"]["id"])
                 self.assertEqual("Latest notice", body["data"]["notice"])
+
+    def test_task_report_tracks_tasks_by_api_key_and_device(self) -> None:
+        self.db.add(Device(user_id=self.user.id, device_id="device-2", device_name="Laptop"))
+        self.db.commit()
+
+        def report(device_id: str, task_id: str, action: str, status: str):
+            return self.client.post(
+                "/v2/tasks/report",
+                json=self._encrypted(
+                    {
+                        "api_key": "valid-key",
+                        "device_id": device_id,
+                        "task_id": task_id,
+                        "action": action,
+                        "status": status,
+                    }
+                ),
+            )
+
+        first = self._decrypted_response(report("device-1", "task-001", "add", "online"))
+        duplicate = self._decrypted_response(report("device-1", "task-001", "add", "online"))
+        changed = self._decrypted_response(report("device-1", "task-001", "add", "offline"))
+        second_device = self._decrypted_response(report("device-2", "task-001", "add", "online"))
+        deleted = self._decrypted_response(report("device-1", "task-001", "delete", "offline"))
+        deleted_again = self._decrypted_response(report("device-1", "task-001", "delete", "offline"))
+
+        self.assertTrue(first["data"]["changed"])
+        self.assertFalse(duplicate["data"]["changed"])
+        self.assertTrue(changed["data"]["changed"])
+        self.assertEqual("offline", changed["data"]["status"])
+        self.assertEqual(1, second_device["data"]["device_task_count"])
+        self.assertEqual(2, second_device["data"]["api_key_task_count"])
+        self.assertTrue(deleted["data"]["changed"])
+        self.assertEqual(1, deleted["data"]["api_key_task_count"])
+        self.assertFalse(deleted_again["data"]["changed"])
+
+        tasks = self.db.query(ClientTask).all()
+        self.assertEqual(1, len(tasks))
+        self.assertEqual("device-2", tasks[0].device_id)
+        self.assertEqual("online", tasks[0].status)
+
+    def test_task_report_rejects_unbound_device_and_invalid_status(self) -> None:
+        unbound_response = self.client.post(
+            "/v2/tasks/report",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "device_id": "missing-device",
+                    "task_id": "task-001",
+                    "action": "add",
+                    "status": "online",
+                }
+            ),
+        )
+        invalid_response = self.client.post(
+            "/v2/tasks/report",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "device_id": "device-1",
+                    "task_id": "task-001",
+                    "action": "add",
+                    "status": "busy",
+                }
+            ),
+        )
+
+        self.assertEqual(404, unbound_response.status_code)
+        self.assertEqual(-1003, self._decrypted_response(unbound_response)["code"])
+        self.assertEqual(422, invalid_response.status_code)
+        self.assertEqual(-422, self._decrypted_response(invalid_response)["code"])
+
+    def test_live_tasks_page_groups_api_key_device_and_task_tags(self) -> None:
+        self.db.add(
+            ClientTask(
+                user_id=self.user.id,
+                device_id="device-1",
+                task_id="task-online",
+                status="online",
+            )
+        )
+        self.db.add(
+            ClientTask(
+                user_id=self.user.id,
+                device_id="device-1",
+                task_id="task-offline",
+                status="offline",
+            )
+        )
+        self.db.commit()
+
+        login = self.client.post(
+            "/admin-ui/login",
+            data={"password": "test-admin-password", "next": "/admin-ui/live-tasks"},
+            follow_redirects=False,
+        )
+        page = self.client.get("/admin-ui/live-tasks")
+        data = self.client.get("/admin-ui/live-tasks/data")
+
+        self.assertEqual(302, login.status_code)
+        self.assertEqual(200, page.status_code)
+        self.assertIn("实时任务", page.text)
+        self.assertIn("task-online", page.text)
+        self.assertIn("task-offline", page.text)
+        self.assertIn('id="live-task-refresh"', page.text)
+        self.assertNotIn("setInterval", page.text)
+        self.assertEqual(200, data.status_code)
+        group = data.json()["groups"][0]
+        self.assertEqual("valid-key", group["api_key"])
+        self.assertEqual(2, group["task_count"])
+        self.assertEqual("Desktop", group["devices"][0]["device_name"])
 
     def test_order_upload_rejects_invalid_order_ip(self) -> None:
         response = self.client.post(

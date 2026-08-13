@@ -8,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Config, Device, Order, User, UserConfig
+from ..models import ClientTask, Config, Device, Order, User, UserConfig
 from ..schemas_v2 import (
     AdminUserConfigV2Request,
     AdminUserCreateV2Request,
@@ -109,6 +109,7 @@ def update_user(
 @router.delete("/users/{user_id}")
 def delete_user(user_id: int = ApiPath(..., gt=0), db: Session = Depends(get_db)):
     user = _user_or_404(db, user_id)
+    db.query(ClientTask).filter(ClientTask.user_id == user.id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
     return v2_success({})

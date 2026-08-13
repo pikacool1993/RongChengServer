@@ -29,6 +29,14 @@ class TaskCheckV2Request(V2Model):
     device_name: str | None = Field(default=None, max_length=128)
 
 
+class TaskReportV2Request(V2Model):
+    api_key: str = Field(min_length=1, max_length=64)
+    device_id: str = Field(min_length=1, max_length=128)
+    task_id: str = Field(min_length=1, max_length=128)
+    action: Literal["add", "delete"]
+    status: Literal["online", "offline"]
+
+
 class MatchConfigV2Request(V2Model):
     api_key: str | None = Field(default=None, max_length=64)
 

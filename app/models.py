@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, inspect, text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, inspect, text
 
 from .database import Base
 
@@ -50,6 +50,21 @@ class Device(Base):
     device_name = Column(String(128), nullable=True)
     first_seen = Column(DateTime, default=now_cn)
     last_seen = Column(DateTime, default=now_cn)
+
+
+class ClientTask(Base):
+    __tablename__ = "client_tasks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "device_id", "task_id", name="uq_client_tasks_device_task"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    device_id = Column(String(128), nullable=False, index=True)
+    task_id = Column(String(128), nullable=False)
+    status = Column(String(16), nullable=False, index=True)
+    created_at = Column(DateTime, default=now_cn)
+    updated_at = Column(DateTime, default=now_cn)
 
 
 class Order(Base):

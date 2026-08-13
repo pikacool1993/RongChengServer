@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Config, Device, Order, User, UserConfig, now_cn
+from ..models import ClientTask, Config, Device, Order, User, UserConfig, now_cn
 from ..response import success
 from ..schemas_v2 import (
     AuthV2Request,
@@ -17,6 +17,7 @@ from ..schemas_v2 import (
     MatchDetailV2Request,
     OrderUploadV2Request,
     TaskCheckV2Request,
+    TaskReportV2Request,
 )
 from ..services.match_api import request_match_detail
 from ..v2_encrypted import V2ClientError, decode_v2_payload
@@ -155,6 +156,63 @@ def task_check_v2(
         {
             "device_id": device.device_id,
             "device_name": device.device_name,
+            "t": int(time.time()),
+        }
+    )
+
+
+@router.post("/tasks/report")
+def report_task_v2(
+    envelope: EncryptedEnvelopeV2,
+    db: Session = Depends(get_db),
+):
+    req, _ = decode_v2_payload(envelope, TaskReportV2Request)
+    user = _user_or_404(db, req.api_key)
+    device = _touch_device(db, user, req.device_id)
+    if not device:
+        raise V2ClientError(status.HTTP_404_NOT_FOUND, -1003, "device not bound")
+
+    task = (
+        db.query(ClientTask)
+        .filter_by(user_id=user.id, device_id=req.device_id, task_id=req.task_id)
+        .first()
+    )
+    changed = False
+    if req.action == "add":
+        if task:
+            changed = task.status != req.status
+            task.status = req.status
+            task.updated_at = now_cn()
+        else:
+            task = ClientTask(
+                user_id=user.id,
+                device_id=req.device_id,
+                task_id=req.task_id,
+                status=req.status,
+            )
+            db.add(task)
+            changed = True
+    elif task:
+        db.delete(task)
+        changed = True
+
+    db.commit()
+    total_count = db.query(ClientTask).filter(ClientTask.user_id == user.id).count()
+    device_count = (
+        db.query(ClientTask)
+        .filter(ClientTask.user_id == user.id, ClientTask.device_id == req.device_id)
+        .count()
+    )
+    return success(
+        {
+            "action": req.action,
+            "changed": changed,
+            "task_id": req.task_id,
+            "status": req.status,
+            "device_id": req.device_id,
+            "device_name": device.device_name,
+            "device_task_count": device_count,
+            "api_key_task_count": total_count,
             "t": int(time.time()),
         }
     )

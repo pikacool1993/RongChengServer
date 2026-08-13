@@ -6,14 +6,14 @@ import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from ..database import get_db
 from ..env import load_env
-from ..models import Config, Device, Order, User, UserConfig, now_cn
+from ..models import ClientTask, Config, Device, Order, User, UserConfig, now_cn
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +108,72 @@ def dashboard(request: Request):
     if not _require_login(request):
         return _redirect_to_login("/admin-ui/orders")
     return RedirectResponse(url="/admin-ui/orders", status_code=302)
+
+
+def _live_task_groups(db: Session) -> list[dict[str, Any]]:
+    rows = (
+        db.query(ClientTask, User, Device)
+        .join(User, User.id == ClientTask.user_id)
+        .join(
+            Device,
+            (Device.user_id == ClientTask.user_id) & (Device.device_id == ClientTask.device_id),
+        )
+        .order_by(User.id.asc(), Device.id.asc(), ClientTask.created_at.asc())
+        .all()
+    )
+    user_groups: dict[int, dict[str, Any]] = {}
+    device_groups: dict[tuple[int, int], dict[str, Any]] = {}
+    for task, user, device in rows:
+        user_group = user_groups.setdefault(
+            user.id,
+            {
+                "user_id": user.id,
+                "name": user.name or "",
+                "api_key": user.api_key,
+                "task_count": 0,
+                "devices": [],
+            },
+        )
+        device_key = (user.id, device.id)
+        device_group = device_groups.get(device_key)
+        if not device_group:
+            device_group = {
+                "id": device.id,
+                "device_id": device.device_id,
+                "device_name": device.device_name or "",
+                "task_count": 0,
+                "tasks": [],
+            }
+            device_groups[device_key] = device_group
+            user_group["devices"].append(device_group)
+
+        device_group["tasks"].append(
+            {
+                "task_id": task.task_id,
+                "status": task.status,
+                "updated_at": task.updated_at.strftime("%Y-%m-%d %H:%M:%S") if task.updated_at else "",
+            }
+        )
+        device_group["task_count"] += 1
+        user_group["task_count"] += 1
+    return list(user_groups.values())
+
+
+@router.get("/admin-ui/live-tasks", response_class=HTMLResponse)
+def live_tasks_page(request: Request, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/live-tasks")
+    return templates.TemplateResponse(
+        "admin/live_tasks.html",
+        {"request": request, "groups": _live_task_groups(db)},
+    )
+
+
+@router.get("/admin-ui/live-tasks/data")
+def live_tasks_data(request: Request, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return JSONResponse(status_code=401, content={"detail": "not authenticated"})
+    return {"groups": _live_task_groups(db)}
 
 
 @router.get("/admin-ui/users", response_class=HTMLResponse)
@@ -233,6 +299,7 @@ def users_delete(request: Request, api_key: str, db: Session = Depends(get_db)):
 
     u = db.query(User).filter(User.api_key == api_key).first()
     if u:
+        db.query(ClientTask).filter(ClientTask.user_id == u.id).delete(synchronize_session=False)
         db.query(UserConfig).filter(UserConfig.user_id == u.id).delete(synchronize_session=False)
         db.delete(u)
         db.commit()
@@ -262,6 +329,10 @@ def device_delete(request: Request, device_id: int, next: str = Form("/admin-ui/
 
     d = db.query(Device).filter(Device.id == device_id).first()
     if d:
+        db.query(ClientTask).filter(
+            ClientTask.user_id == d.user_id,
+            ClientTask.device_id == d.device_id,
+        ).delete(synchronize_session=False)
         db.delete(d)
         db.commit()
     return RedirectResponse(url=next or "/admin-ui/users", status_code=302)

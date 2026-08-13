@@ -13,7 +13,7 @@ from .schemas import (
     AdminUpsertUserConfigRequest,
 )
 from .database import get_db
-from .models import Config, User, UserConfig, Device, Order
+from .models import ClientTask, Config, User, UserConfig, Device, Order
 from .response import success, fail
 from .env import load_env
 
@@ -134,6 +134,7 @@ def delete_user(api_key: str, password: str, db: Session = Depends(get_db)):
     if not u:
         return fail(msg="User not found")
 
+    db.query(ClientTask).filter(ClientTask.user_id == u.id).delete(synchronize_session=False)
     db.delete(u)
     db.commit()
     return success({}, encrypt=False)
