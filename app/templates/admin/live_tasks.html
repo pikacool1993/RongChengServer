@@ -27,6 +27,10 @@
     <div class="d-flex align-items-center gap-3">
       <div class="live-task-meta"><span id="live-task-total">0</span> 个任务</div>
       <button class="btn btn-outline-primary btn-sm live-task-refresh" id="live-task-refresh" type="button">刷新任务</button>
+      <form method="post" action="/admin-ui/live-tasks/delete-all"
+            onsubmit="return confirm('确认清除所有任务？此操作不可恢复。');">
+        <button class="btn btn-outline-danger btn-sm" id="live-task-delete-all" type="submit" {% if not groups %}disabled{% endif %}>清除所有任务</button>
+      </form>
     </div>
   </div>
 
@@ -37,10 +41,12 @@
       const root = document.getElementById("live-task-root");
       const totalNode = document.getElementById("live-task-total");
       const refreshButton = document.getElementById("live-task-refresh");
+      const deleteAllButton = document.getElementById("live-task-delete-all");
       const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[char]);
       const render = (groups) => {
         const total = groups.reduce((sum, group) => sum + group.task_count, 0);
         totalNode.textContent = total;
+        deleteAllButton.disabled = total === 0;
         if (!groups.length) { root.innerHTML = '<div class="live-task-empty">暂无客户端任务</div>'; return; }
         root.innerHTML = groups.map((group) => `
           <section class="live-task-user">

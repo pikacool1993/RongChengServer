@@ -90,10 +90,10 @@ def login_action(
         )
 
     request.session["admin_logged_in"] = True
-    # 默认跳到订单页
-    target = next or "/admin-ui/orders"
+    # 默认进入实时任务页
+    target = next or "/admin-ui/live-tasks"
     if target == "/admin-ui":
-        target = "/admin-ui/orders"
+        target = "/admin-ui/live-tasks"
     return RedirectResponse(url=target, status_code=302)
 
 
@@ -106,8 +106,8 @@ def logout_action(request: Request):
 @router.get("/admin-ui", response_class=HTMLResponse)
 def dashboard(request: Request):
     if not _require_login(request):
-        return _redirect_to_login("/admin-ui/orders")
-    return RedirectResponse(url="/admin-ui/orders", status_code=302)
+        return _redirect_to_login("/admin-ui/live-tasks")
+    return RedirectResponse(url="/admin-ui/live-tasks", status_code=302)
 
 
 def _live_task_groups(db: Session) -> list[dict[str, Any]]:
@@ -174,6 +174,16 @@ def live_tasks_data(request: Request, db: Session = Depends(get_db)):
     if not _require_login(request):
         return JSONResponse(status_code=401, content={"detail": "not authenticated"})
     return {"groups": _live_task_groups(db)}
+
+
+@router.post("/admin-ui/live-tasks/delete-all")
+def live_tasks_delete_all(request: Request, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/live-tasks")
+
+    db.query(ClientTask).delete(synchronize_session=False)
+    db.commit()
+    return RedirectResponse(url="/admin-ui/live-tasks", status_code=302)
 
 
 @router.get("/admin-ui/users", response_class=HTMLResponse)

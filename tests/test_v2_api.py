@@ -286,6 +286,14 @@ class V2ApiTests(unittest.TestCase):
         )
         self.db.commit()
 
+        unauthenticated_delete = self.client.post(
+            "/admin-ui/live-tasks/delete-all",
+            follow_redirects=False,
+        )
+        self.assertEqual(302, unauthenticated_delete.status_code)
+        self.assertTrue(unauthenticated_delete.headers["location"].startswith("/admin-ui/login"))
+        self.assertEqual(2, self.db.query(ClientTask).count())
+
         login = self.client.post(
             "/admin-ui/login",
             data={"password": "test-admin-password", "next": "/admin-ui/live-tasks"},
@@ -300,12 +308,40 @@ class V2ApiTests(unittest.TestCase):
         self.assertIn("task-online", page.text)
         self.assertIn("task-offline", page.text)
         self.assertIn('id="live-task-refresh"', page.text)
+        self.assertIn('id="live-task-delete-all"', page.text)
         self.assertNotIn("setInterval", page.text)
         self.assertEqual(200, data.status_code)
         group = data.json()["groups"][0]
         self.assertEqual("valid-key", group["api_key"])
         self.assertEqual(2, group["task_count"])
         self.assertEqual("Desktop", group["devices"][0]["device_name"])
+
+        delete_response = self.client.post(
+            "/admin-ui/live-tasks/delete-all",
+            follow_redirects=False,
+        )
+        self.assertEqual(302, delete_response.status_code)
+        self.assertEqual("/admin-ui/live-tasks", delete_response.headers["location"])
+        self.assertEqual(0, self.db.query(ClientTask).count())
+
+    def test_admin_ui_defaults_to_live_tasks(self) -> None:
+        anonymous = self.client.get("/admin-ui", follow_redirects=False)
+        login_page = self.client.get("/admin-ui/login")
+        login = self.client.post(
+            "/admin-ui/login",
+            data={"password": "test-admin-password"},
+            follow_redirects=False,
+        )
+        dashboard = self.client.get("/admin-ui", follow_redirects=False)
+
+        self.assertEqual(302, anonymous.status_code)
+        self.assertIn("next=/admin-ui/live-tasks", anonymous.headers["location"])
+        self.assertEqual(200, login_page.status_code)
+        self.assertIn('name="next" value="/admin-ui"', login_page.text)
+        self.assertEqual(302, login.status_code)
+        self.assertEqual("/admin-ui/live-tasks", login.headers["location"])
+        self.assertEqual(302, dashboard.status_code)
+        self.assertEqual("/admin-ui/live-tasks", dashboard.headers["location"])
 
     def test_order_upload_rejects_invalid_order_ip(self) -> None:
         response = self.client.post(
