@@ -62,6 +62,25 @@ class V2ApiTests(unittest.TestCase):
     def _decrypted_response(response) -> dict:
         return aes_decrypt(response.json()["payload"])
 
+    def test_auth_returns_configured_lark_key(self) -> None:
+        self.user.lark_key = "configured-lark-key"
+        self.db.commit()
+
+        response = self.client.post(
+            "/v2/auth",
+            json=self._encrypted(
+                {
+                    "api_key": "valid-key",
+                    "device_id": "device-1",
+                }
+            ),
+        )
+
+        self.assertEqual(200, response.status_code)
+        body = self._decrypted_response(response)
+        self.assertEqual(0, body["code"])
+        self.assertEqual("configured-lark-key", body["data"]["lark_key"])
+
     def test_order_upload_requires_task_id_and_saves_structured_holders(self) -> None:
         response = self.client.post(
             "/v2/orders",

@@ -94,6 +94,7 @@ def auth_v2(envelope: EncryptedEnvelopeV2, db: Session = Depends(get_db)):
     return success(
         {
             "auth_mode": "api_key",
+            "lark_key": user.lark_key,
             "role": user.role or 0,
             "config": _load_config(user_config.config if user_config else None),
             "device_id": device.device_id,
