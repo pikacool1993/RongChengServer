@@ -2,22 +2,57 @@
 {% block content %}
   <style>
     .orders-table {
-      min-width: 1520px;
-      font-size: 13px;
+      min-width: 1180px;
+      table-layout: fixed;
+      font-size: 12px;
     }
 
     .orders-table th,
     .orders-table td {
-      white-space: nowrap;
+      white-space: normal;
       vertical-align: middle;
-      padding: 10px 12px;
+      padding: 8px 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .orders-table th:nth-child(1),
+    .orders-table td:nth-child(1) { width: 128px; }
+    .orders-table th:nth-child(2),
+    .orders-table td:nth-child(2) { width: 112px; }
+    .orders-table th:nth-child(3),
+    .orders-table td:nth-child(3) { width: 58px; }
+    .orders-table th:nth-child(4),
+    .orders-table td:nth-child(4) { width: 92px; }
+    .orders-table th:nth-child(5),
+    .orders-table td:nth-child(5) { width: 58px; }
+    .orders-table th:nth-child(6),
+    .orders-table td:nth-child(6) { width: 86px; }
+    .orders-table th:nth-child(7),
+    .orders-table td:nth-child(7) { width: 108px; }
+    .orders-table th:nth-child(8),
+    .orders-table td:nth-child(8) { width: 100px; }
+    .orders-table th:nth-child(9),
+    .orders-table td:nth-child(9) { width: 96px; }
+    .orders-table th:nth-child(10),
+    .orders-table td:nth-child(10) { width: 62px; }
+    .orders-table th:nth-child(11),
+    .orders-table td:nth-child(11) { width: 126px; }
+    .orders-table th:nth-child(12),
+    .orders-table td:nth-child(12) { width: 84px; }
+    .orders-table th:nth-child(13),
+    .orders-table td:nth-child(13) { width: 68px; }
+
+    .orders-table code {
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .cell-clip {
-      max-width: 170px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      max-width: none;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .cell-name,
@@ -26,19 +61,6 @@
       white-space: normal;
       word-break: break-word;
       line-height: 1.45;
-    }
-
-    .metric {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      background: #eef4ff;
-      color: #1e40af;
-      border: 1px solid #d8e6ff;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 13px;
     }
 
     .type-badge {
@@ -58,6 +80,63 @@
       color: #687587;
       text-align: center;
     }
+
+    .order-quick-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .notification-toggle {
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+    }
+
+    .notification-toggle .form-check-input {
+      width: 16px;
+      height: 16px;
+      min-height: 16px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .quick-copy-button {
+      width: 28px;
+      height: 28px;
+      padding: 2px 0;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .copy-feedback {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 1090;
+      max-width: min(360px, calc(100vw - 40px));
+      padding: 10px 14px;
+      border-radius: 7px;
+      background: #172033;
+      color: #fff;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, .18);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+    }
+
+    .copy-feedback.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .copy-feedback.error {
+      background: #991b1b;
+    }
   </style>
 
   <section class="page-panel">
@@ -65,11 +144,11 @@
       <div>
         <h1 class="page-title">订单管理</h1>
         <div class="page-subtitle">
-          共 {{ total }} 条订单，当前第 {{ page }} 页，票数合计 {{ tickets_sum }}
+          共 {{ total }} 条订单，当前第 {{ page }} 页
         </div>
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <span class="metric">票数 {{ tickets_sum }}</span>
+        <a class="btn btn-outline-primary btn-sm" href="/admin-ui/orders/ip-statistics{% if filters.match_id %}?match_id={{ filters.match_id }}{% endif %}">按 IP 统计</a>
         <form method="post" action="/admin-ui/orders/delete-all"
               onsubmit="return confirm('确认删除全部订单？此操作不可恢复。');">
           <button class="btn btn-outline-danger btn-sm" type="submit" {% if total == 0 %}disabled{% endif %}>删除全部</button>
@@ -113,20 +192,18 @@
       <table class="table table-hover align-middle orders-table">
         <thead>
           <tr>
-            <th>密钥</th>
+            <th>快捷</th>
             <th>设备名-任务ID</th>
-            <th>下单IP</th>
             <th>比赛ID</th>
-            <th>票数</th>
             <th>姓名</th>
             <th>区域</th>
             <th>价格</th>
             <th>手机号</th>
+            <th>下单IP</th>
+            <th>密钥</th>
             <th>类型</th>
             <th>创建时间</th>
             <th>首开延迟时间</th>
-            <th>下单开始</th>
-            <th>服务响应</th>
             <th class="text-end">操作</th>
           </tr>
         </thead>
@@ -134,24 +211,41 @@
           {% for o in orders %}
           <tr>
             <td>
-              <div class="cell-clip" title="{{ o.api_key or o.raw_api_key or '' }}">
-                <code>{{ o.api_key or o.raw_api_key or "" }}</code>
+              <div class="order-quick-actions">
+                <label class="form-check notification-toggle"
+                       title="{% if o.customer_notified %}已通知{% else %}未通知{% endif %}"
+                       aria-label="{% if o.customer_notified %}已通知{% else %}未通知{% endif %}">
+                  <input class="form-check-input js-notification-toggle" type="checkbox"
+                         data-order-id="{{ o.id }}" aria-label="是否已通知客户"
+                         {% if o.customer_notified %}checked{% endif %}>
+                </label>
+                <button class="btn btn-outline-secondary btn-sm quick-copy-button js-copy-name" type="button"
+                        data-order-names="{{ o.order_names or '' }}" {% if not o.order_names %}disabled{% endif %}
+                        title="复制订单姓名" aria-label="复制订单姓名">名</button>
+                <button class="btn btn-outline-primary btn-sm quick-copy-button js-copy-payment" type="button"
+                        data-order-names="{{ o.order_names or '' }}" title="复制通知客户支付的消息" aria-label="复制通知客户支付消息">付</button>
               </div>
             </td>
             {% set device_task = (o.device_name or "") ~ ("-" if o.device_name and o.task_id else "") ~ (o.task_id or "") %}
             <td><div class="cell-clip" title="{{ device_task }}">{{ device_task }}</div></td>
-            <td><div class="cell-clip" title="{{ o.order_ip or '' }}">{{ o.order_ip or "" }}</div></td>
             <td>{{ o.match_id if o.match_id is not none else "" }}</td>
-            <td class="fw-bold">{{ o.ticket_count }}</td>
             <td><div class="cell-name">{{ o.order_names or "" }}</div></td>
             <td><div class="cell-region">{{ o.order_region or "" }}</div></td>
             <td><div class="cell-clip" title="{{ o.order_price or '' }}">{{ o.order_price or "" }}</div></td>
-            <td>{{ o.order_phones or "" }}</td>
+            <td>
+              <button class="btn btn-outline-secondary btn-sm js-show-phones" type="button"
+                      data-order-names="{{ o.order_names or '' }}" data-order-phones="{{ o.order_phones or '' }}"
+                      {% if not o.order_phones %}disabled{% endif %}>查看手机号</button>
+            </td>
+            <td><div class="cell-clip" title="{{ o.order_ip or '' }}">{{ o.order_ip or "" }}</div></td>
+            <td>
+              <div class="cell-clip" title="{{ o.api_key or o.raw_api_key or '' }}">
+                <code>{{ o.api_key or o.raw_api_key or "" }}</code>
+              </div>
+            </td>
             <td><span class="type-badge">{{ o.type_label }}</span></td>
             <td><div class="cell-clip" title="{{ o.created_at }}">{{ o.created_at }}</div></td>
             <td>{{ o.first_delay }}</td>
-            <td><div class="cell-clip" title="{{ o.first_start_t or '' }}">{{ o.first_start_t or "" }}</div></td>
-            <td><div class="cell-clip" title="{{ o.first_end_t or '' }}">{{ o.first_end_t or "" }}</div></td>
             <td class="text-end">
               <form method="post" action="/admin-ui/orders/{{ o.id }}/delete" class="d-inline"
                     onsubmit="return confirm('确认删除该订单？');">
@@ -163,7 +257,7 @@
           </tr>
           {% else %}
           <tr>
-            <td colspan="15">
+            <td colspan="13">
               <div class="empty-state">暂无订单数据</div>
             </td>
           </tr>
@@ -186,4 +280,142 @@
       </div>
     </div>
   </section>
+  <div id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></div>
+
+  <div class="modal fade" id="order-phone-modal" tabindex="-1" aria-labelledby="order-phone-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-6" id="order-phone-title">订单手机号</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr><th>姓名</th><th>手机号</th></tr>
+              </thead>
+              <tbody id="order-phone-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const feedback = document.getElementById("copy-feedback");
+      let feedbackTimer;
+
+      function showFeedback(message, isError = false) {
+        window.clearTimeout(feedbackTimer);
+        feedback.textContent = message;
+        feedback.classList.toggle("error", isError);
+        feedback.classList.add("show");
+        feedbackTimer = window.setTimeout(() => feedback.classList.remove("show"), 1800);
+      }
+
+      async function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("copy failed");
+      }
+
+      function paymentMessage(orderNames) {
+        const names = orderNames
+          .split("&")
+          .map(name => name.trim())
+          .filter(Boolean)
+          .join("、");
+        const greeting = names ? `${names}，您好！` : "您好！";
+        return `${greeting}您的订单已创建，请尽快完成支付，支付完成后请回复告知，谢谢！`;
+      }
+
+      document.querySelectorAll(".js-show-phones").forEach(button => {
+        button.addEventListener("click", () => {
+          const names = (button.dataset.orderNames || "").split("&").map(value => value.trim());
+          const phones = (button.dataset.orderPhones || "").split("&").map(value => value.trim());
+          const itemCount = Math.max(names.length, phones.length);
+          const list = document.getElementById("order-phone-list");
+          list.replaceChildren();
+
+          for (let index = 0; index < itemCount; index += 1) {
+            const row = document.createElement("tr");
+            const nameCell = document.createElement("td");
+            const phoneCell = document.createElement("td");
+            nameCell.textContent = names[index] || `购票人 ${index + 1}`;
+            phoneCell.textContent = phones[index] || "未填写";
+            row.append(nameCell, phoneCell);
+            list.appendChild(row);
+          }
+
+          bootstrap.Modal.getOrCreateInstance(document.getElementById("order-phone-modal")).show();
+        });
+      });
+
+      document.querySelectorAll(".js-copy-name").forEach(button => {
+        button.addEventListener("click", async () => {
+          try {
+            await copyText(button.dataset.orderNames || "");
+            showFeedback("订单姓名已复制");
+          } catch (error) {
+            showFeedback("复制失败，请重试", true);
+          }
+        });
+      });
+
+      document.querySelectorAll(".js-copy-payment").forEach(button => {
+        button.addEventListener("click", async () => {
+          try {
+            await copyText(paymentMessage(button.dataset.orderNames || ""));
+            showFeedback("支付通知已复制");
+          } catch (error) {
+            showFeedback("复制失败，请重试", true);
+          }
+        });
+      });
+
+      document.querySelectorAll(".js-notification-toggle").forEach(toggle => {
+        toggle.addEventListener("change", async () => {
+          const previousValue = !toggle.checked;
+          toggle.disabled = true;
+          toggle.closest(".notification-toggle").title = "保存中";
+          try {
+            const body = new URLSearchParams({notified: String(toggle.checked)});
+            const response = await fetch(`/admin-ui/orders/${toggle.dataset.orderId}/customer-notified`, {
+              method: "POST",
+              headers: {"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+              body,
+              credentials: "same-origin",
+            });
+            if (!response.ok) throw new Error("save failed");
+            const result = await response.json();
+            toggle.checked = Boolean(result.customer_notified);
+            toggle.closest(".notification-toggle").title = toggle.checked ? "已通知" : "未通知";
+            toggle.closest(".notification-toggle").setAttribute("aria-label", toggle.checked ? "已通知" : "未通知");
+            showFeedback(toggle.checked ? "已标记为已通知" : "已标记为未通知");
+          } catch (error) {
+            toggle.checked = previousValue;
+            toggle.closest(".notification-toggle").title = previousValue ? "已通知" : "未通知";
+            toggle.closest(".notification-toggle").setAttribute("aria-label", previousValue ? "已通知" : "未通知");
+            showFeedback("通知状态保存失败", true);
+          } finally {
+            toggle.disabled = false;
+          }
+        });
+      });
+    })();
+  </script>
 {% endblock %}

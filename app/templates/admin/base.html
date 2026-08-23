@@ -230,7 +230,8 @@
       </div>
       <nav class="nav-stack">
         <a href="/admin-ui/live-tasks" class="{% if request.url.path.startswith('/admin-ui/live-tasks') %}active{% endif %}">实时任务</a>
-        <a href="/admin-ui/orders" class="{% if request.url.path.startswith('/admin-ui/orders') %}active{% endif %}">订单管理</a>
+        <a href="/admin-ui/orders" class="{% if request.url.path == '/admin-ui/orders' %}active{% endif %}">订单管理</a>
+        <a href="/admin-ui/orders/ip-statistics" class="{% if request.url.path.startswith('/admin-ui/orders/ip-statistics') %}active{% endif %}">IP统计</a>
         <a href="/admin-ui/users" class="{% if request.url.path.startswith('/admin-ui/users') %}active{% endif %}">用户密钥</a>
         <a href="/admin-ui/configs" class="{% if request.url.path.startswith('/admin-ui/configs') %}active{% endif %}">比赛公告</a>
       </nav>

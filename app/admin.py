@@ -16,6 +16,7 @@ from .database import get_db
 from .models import ClientTask, Config, User, UserConfig, Device, Order
 from .response import success, fail
 from .env import load_env
+from .services.order_statistics import query_order_ip_statistics
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -316,6 +317,31 @@ def get_tickets_count(api_key: str, password: str, db: Session = Depends(get_db)
 
 
 # =========================
+# 按比赛统计下单 IP 的订单数
+# =========================
+@router.get("/orders/ip_count")
+@router.get("/task/ip_count", include_in_schema=False)
+@router.get("/orders/ip_statistics", include_in_schema=False)
+@router.get("/orders/ip-statistics", include_in_schema=False)
+def get_order_ip_statistics(match_id: int, password: str, db: Session = Depends(get_db)):
+    pwd_error = verify_password(password)
+    if pwd_error:
+        return pwd_error
+    if match_id <= 0:
+        return fail(msg="match_id must be a positive integer")
+
+    items = query_order_ip_statistics(db, match_id)
+    return success(
+        {
+            "match_id": match_id,
+            "total": sum(item["order_count"] for item in items),
+            "ip_counts": items,
+        },
+        encrypt=False,
+    )
+
+
+# =========================
 # 订单列表（支持筛选 + 分页）
 # =========================
 @router.get("/orders/list")
@@ -391,6 +417,7 @@ def list_orders(
                     "raw_payload": o.raw_payload,
                     "parse_status": o.parse_status,
                     "parse_error": o.parse_error,
+                    "customer_notified": bool(o.customer_notified),
                     "created_at": o.created_at.timestamp() if o.created_at else None,
                 }
                 for (o, u) in items

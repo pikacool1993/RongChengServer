@@ -395,6 +395,129 @@ class V2ApiTests(unittest.TestCase):
         self.assertEqual(200, token_response.status_code)
         self.assertEqual(self.user.id, token_response.json()["data"]["users"][0]["id"])
 
+    def test_admin_order_ip_statistics_counts_order_records_by_match(self) -> None:
+        self.db.add_all(
+            [
+                Order(
+                    user_id=self.user.id,
+                    match_id=86,
+                    order_ip="203.0.113.10",
+                    ticket_count=4,
+                ),
+                Order(
+                    user_id=self.user.id,
+                    match_id=86,
+                    order_ip="203.0.113.10",
+                    ticket_count=1,
+                ),
+                Order(
+                    user_id=self.user.id,
+                    match_id=86,
+                    order_ip="2001:db8::1",
+                    ticket_count=2,
+                ),
+                Order(
+                    user_id=self.user.id,
+                    match_id=87,
+                    order_ip="203.0.113.10",
+                    ticket_count=8,
+                ),
+                Order(user_id=self.user.id, match_id=86, order_ip=None, ticket_count=10),
+            ]
+        )
+        self.db.commit()
+
+        response = self.client.get(
+            "/v2/admin/orders/ip-statistics",
+            params={"match_id": 86},
+            headers={"Authorization": "Bearer test-admin-token"},
+        )
+
+        self.assertEqual(200, response.status_code)
+        data = response.json()["data"]
+        self.assertEqual(86, data["match_id"])
+        self.assertEqual(3, data["total"])
+        self.assertEqual(
+            [
+                {"order_ip": "203.0.113.10", "order_count": 2},
+                {"order_ip": "2001:db8::1", "order_count": 1},
+            ],
+            data["ip_counts"],
+        )
+
+        legacy_response = self.client.get(
+            "/admin/orders/ip_count",
+            params={"match_id": 86, "password": "test-admin-password"},
+        )
+        self.assertEqual(200, legacy_response.status_code)
+        self.assertEqual(data, legacy_response.json()["data"])
+
+    def test_admin_ui_can_mark_customer_notified(self) -> None:
+        order = Order(
+            user_id=self.user.id,
+            match_id=86,
+            order_names="张三",
+            order_phones="13800000000",
+            order_ip="203.0.113.10",
+            ticket_count=1,
+        )
+        self.db.add(order)
+        self.db.commit()
+        self.db.refresh(order)
+
+        unauthenticated = self.client.post(
+            f"/admin-ui/orders/{order.id}/customer-notified",
+            data={"notified": "true"},
+        )
+        self.assertEqual(401, unauthenticated.status_code)
+
+        self.client.post(
+            "/admin-ui/login",
+            data={"password": "test-admin-password", "next": "/admin-ui/orders"},
+        )
+        page = self.client.get("/admin-ui/orders")
+        self.assertEqual(200, page.status_code)
+        self.assertIn('aria-label="复制订单姓名"', page.text)
+        self.assertIn('aria-label="复制通知客户支付消息"', page.text)
+        self.assertIn("查看手机号", page.text)
+        self.assertIn("未通知", page.text)
+        self.assertIn('class="form-check notification-toggle"', page.text)
+        self.assertNotIn("form-switch", page.text)
+        self.assertLess(page.text.index("<th>快捷</th>"), page.text.index("<th>密钥</th>"))
+        expected_headers = [
+            "快捷",
+            "设备名-任务ID",
+            "比赛ID",
+            "姓名",
+            "区域",
+            "价格",
+            "手机号",
+            "下单IP",
+            "密钥",
+            "类型",
+            "创建时间",
+            "首开延迟时间",
+            "操作",
+        ]
+        header_positions = [
+            page.text.index(f"<th>{header}</th>") for header in expected_headers[:-1]
+        ]
+        header_positions.append(page.text.index('<th class="text-end">操作</th>'))
+        self.assertEqual(sorted(header_positions), header_positions)
+        self.assertNotIn("<th>票数</th>", page.text)
+        self.assertNotIn("票数合计", page.text)
+        self.assertNotIn("<th>下单开始</th>", page.text)
+        self.assertNotIn("<th>服务响应</th>", page.text)
+
+        response = self.client.post(
+            f"/admin-ui/orders/{order.id}/customer-notified",
+            data={"notified": "true"},
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertTrue(response.json()["customer_notified"])
+        self.db.refresh(order)
+        self.assertTrue(order.customer_notified)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,7 @@ from ..schemas_v2 import (
 )
 from ..v2_response import v2_success
 from ..v2_security import require_admin
+from ..services.order_statistics import query_order_ip_statistics
 
 
 router = APIRouter(
@@ -193,6 +194,23 @@ def get_tickets_count(user_id: int = ApiPath(..., gt=0), db: Session = Depends(g
     return v2_success({"user_id": user.id, "tickets_count": int(total or 0)})
 
 
+@router.get("/orders/ip-statistics")
+@router.get("/orders/ip-count", include_in_schema=False)
+@router.get("/orders/ip_statistics", include_in_schema=False)
+def get_order_ip_statistics(
+    match_id: int = Query(..., gt=0),
+    db: Session = Depends(get_db),
+):
+    items = query_order_ip_statistics(db, match_id)
+    return v2_success(
+        {
+            "match_id": match_id,
+            "total": sum(item["order_count"] for item in items),
+            "ip_counts": items,
+        }
+    )
+
+
 @router.put("/matches/{match_id}/notice")
 def put_match_notice(
     req: MatchNoticeV2Request,
@@ -268,6 +286,7 @@ def list_orders(
                     "task_type": order.type or 0,
                     "parse_status": order.parse_status,
                     "parse_error": order.parse_error,
+                    "customer_notified": bool(order.customer_notified),
                     "raw_payload": order.raw_payload,
                     "created_at": order.created_at.timestamp() if order.created_at else None,
                 }

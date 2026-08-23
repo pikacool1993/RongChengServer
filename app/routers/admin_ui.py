@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from ..database import get_db
 from ..env import load_env
 from ..models import ClientTask, Config, Device, Order, User, UserConfig, now_cn
+from ..services.order_statistics import query_order_ip_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -458,6 +459,7 @@ def orders_page(
                 "raw_payload": o.raw_payload,
                 "parse_status": o.parse_status,
                 "parse_error": o.parse_error,
+                "customer_notified": bool(o.customer_notified),
                 "created_at": o.created_at,
             }
         )
@@ -481,6 +483,86 @@ def orders_page(
             "tickets_sum": tickets_sum_value,
         },
     )
+
+
+@router.post("/admin-ui/orders/{order_id}/customer-notified")
+def order_customer_notified(
+    request: Request,
+    order_id: int,
+    notified: bool = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not _require_login(request):
+        return JSONResponse(status_code=401, content={"detail": "not authenticated"})
+
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return JSONResponse(status_code=404, content={"detail": "order not found"})
+
+    order.customer_notified = notified
+    db.commit()
+    return {"order_id": order.id, "customer_notified": bool(order.customer_notified)}
+
+
+def _parse_match_id(match_id: str | None) -> int | None:
+    if match_id is None:
+        return None
+    value = match_id.strip()
+    if value.isdigit() and int(value) > 0:
+        return int(value)
+    return None
+
+
+def _order_ip_statistics_context(
+    request: Request,
+    match_id: str | None,
+    db: Session,
+) -> dict[str, Any]:
+    match_id_value = _parse_match_id(match_id)
+    items = query_order_ip_statistics(db, match_id_value) if match_id_value is not None else []
+    return {
+        "request": request,
+        "match_id": "" if match_id is None else match_id.strip(),
+        "match_id_value": match_id_value,
+        "items": items,
+        "total": sum(item["order_count"] for item in items),
+        "error": bool(match_id and match_id_value is None),
+    }
+
+
+@router.get("/admin-ui/orders/ip-statistics", response_class=HTMLResponse)
+def order_ip_statistics_page(
+    request: Request,
+    match_id: str | None = None,
+    db: Session = Depends(get_db),
+):
+    if not _require_login(request):
+        query = request.url.path
+        if request.url.query:
+            query = f"{query}?{request.url.query}"
+        return _redirect_to_login(query)
+    return templates.TemplateResponse(
+        "admin/order_ip_statistics.html",
+        _order_ip_statistics_context(request, match_id, db),
+    )
+
+
+@router.get("/admin-ui/orders/ip-statistics/data")
+def order_ip_statistics_data(
+    request: Request,
+    match_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    if not _require_login(request):
+        return JSONResponse(status_code=401, content={"detail": "not authenticated"})
+    if match_id is None or match_id <= 0:
+        return JSONResponse(status_code=422, content={"detail": "match_id must be a positive integer"})
+    items = query_order_ip_statistics(db, match_id)
+    return {
+        "match_id": match_id,
+        "total": sum(item["order_count"] for item in items),
+        "ip_counts": items,
+    }
 
 
 @router.post("/admin-ui/orders/{order_id}/delete")

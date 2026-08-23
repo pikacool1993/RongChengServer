@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, inspect, text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, inspect, text
 
 from .database import Base
 
@@ -92,6 +92,7 @@ class Order(Base):
     raw_payload = Column(Text, nullable=True)
     parse_status = Column(String(32), default="ok", index=True)
     parse_error = Column(Text, nullable=True)
+    customer_notified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=now_cn)
 
 
@@ -115,6 +116,7 @@ def ensure_schema_columns(engine) -> None:
             "raw_payload": "TEXT NULL",
             "parse_status": "VARCHAR(32) NULL DEFAULT 'ok'",
             "parse_error": "TEXT NULL",
+            "customer_notified": "BOOLEAN NOT NULL DEFAULT 0",
         },
     }
 

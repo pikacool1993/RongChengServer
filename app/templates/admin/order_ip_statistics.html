@@ -1,0 +1,54 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="page-panel">
+  <div class="page-panel-header">
+    <div>
+      <h1 class="page-title">IP 订单统计</h1>
+      <div class="page-subtitle">按比赛 ID 汇总每个下单 IP 的订单记录数</div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="/admin-ui/orders">返回订单管理</a>
+  </div>
+
+  <div class="toolbar">
+    <form class="row g-2 align-items-end" method="get" action="/admin-ui/orders/ip-statistics">
+      <div class="col-sm-6 col-md-4">
+        <label class="form-label mb-1" for="statistics-match-id">比赛 ID</label>
+        <input id="statistics-match-id" class="form-control" name="match_id" type="number" min="1" step="1"
+               value="{{ match_id }}" placeholder="例如 86" required>
+      </div>
+      <div class="col-sm-auto">
+        <button class="btn btn-primary" type="submit">查询</button>
+      </div>
+    </form>
+    {% if error %}
+      <div class="alert alert-danger mt-3 mb-0">比赛 ID 必须是正整数。</div>
+    {% elif match_id_value is not none %}
+      <div class="text-muted small mt-3">比赛 {{ match_id_value }} 共 {{ total }} 条带 IP 订单，{{ items|length }} 个 IP。</div>
+    {% endif %}
+  </div>
+
+  {% if match_id_value is not none and not error %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>下单 IP</th>
+            <th class="text-end">订单数量</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+            <tr>
+              <td><code>{{ item.order_ip }}</code></td>
+              <td class="text-end fw-bold">{{ item.order_count }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="2" class="text-center text-muted py-4">该比赛暂无带 IP 的订单</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
