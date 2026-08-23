@@ -120,6 +120,7 @@ def query_orders_by_api_key(
         {
             "match_id": order.match_id,
             "device_name": order.device_name,
+            "task_id": order.task_id,
             "order_names": order.order_names,
             "ticket_count": order.ticket_count or 0,
             "order_region": order.order_region,

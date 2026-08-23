@@ -344,7 +344,7 @@
               <thead>
                 <tr>
                   <th>比赛 ID</th>
-                  <th>设备名</th>
+                  <th>设备名-任务ID</th>
                   <th>购票人</th>
                   <th>票数</th>
                   <th>区域</th>
@@ -356,7 +356,8 @@
                 {% for order in orders %}
                   <tr>
                     <td class="numeric">{{ order.match_id or '-' }}</td>
-                    <td>{{ order.device_name or '-' }}</td>
+                    {% set device_task = (order.device_name or "") ~ ("-" if order.device_name and order.task_id else "") ~ (order.task_id or "") %}
+                    <td>{{ device_task or '-' }}</td>
                     <td class="primary-cell">{{ order.order_names or '-' }}</td>
                     <td class="numeric">{{ order.ticket_count }}</td>
                     <td>{{ order.order_region or '-' }}</td>

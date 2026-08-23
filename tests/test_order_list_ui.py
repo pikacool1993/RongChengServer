@@ -68,6 +68,7 @@ class OrderListUiTests(unittest.TestCase):
                     user_id=self.user.id,
                     raw_api_key="valid-key",
                     device_name="设备 A",
+                    task_id="task-a",
                     match_id=100,
                     order_names="张三",
                     order_region="A区",
@@ -81,6 +82,7 @@ class OrderListUiTests(unittest.TestCase):
                     user_id=None,
                     raw_api_key="valid-key",
                     device_name="设备 B",
+                    task_id="task-b",
                     match_id=101,
                     order_names="李四&王五",
                     order_region="B区",
@@ -94,6 +96,7 @@ class OrderListUiTests(unittest.TestCase):
                     user_id=self.user.id,
                     raw_api_key="valid-key",
                     device_name="设备 C",
+                    task_id="task-c",
                     match_id=100,
                     order_names="赵六",
                     order_region="C区",
@@ -128,6 +131,7 @@ class OrderListUiTests(unittest.TestCase):
         self.assertEqual(4, first_page.tickets_sum)
         self.assertEqual(2, first_page.total_pages)
         self.assertEqual("设备 C", first_page.orders[0]["device_name"])
+        self.assertEqual("task-c", first_page.orders[0]["task_id"])
         self.assertEqual(2, second_page.page)
         self.assertEqual("设备 A", second_page.orders[0]["device_name"])
         self.assertEqual([100, 101, 100], [order["match_id"] for order in all_orders.orders])
@@ -138,6 +142,7 @@ class OrderListUiTests(unittest.TestCase):
                 user_id=self.user.id,
                 raw_api_key="valid-key",
                 device_name="测试设备",
+                task_id="task-100",
                 match_id=100,
                 order_names="张三",
                 order_region="A区",
@@ -164,13 +169,14 @@ class OrderListUiTests(unittest.TestCase):
             )
 
         self.assertEqual(200, response.status_code)
-        self.assertIn("测试设备", response.text)
+        self.assertIn("测试设备-task-100", response.text)
         self.assertIn("张三", response.text)
         self.assertIn("A区", response.text)
         self.assertIn("共 1 条，合计 1 张票", response.text)
         self.assertIn('type="text" value="valid-key"', response.text)
         self.assertIn('<option value="10" selected>10 条</option>', response.text)
         self.assertIn("<th>比赛 ID</th>", response.text)
+        self.assertIn("<th>设备名-任务ID</th>", response.text)
         self.assertIn("<th>创建时间</th>", response.text)
         self.assertNotIn("<th>类型</th>", response.text)
 
