@@ -112,6 +112,74 @@
       line-height: 1;
     }
 
+    .phone-view-button {
+      min-width: 48px;
+    }
+
+    .phone-modal .modal-dialog {
+      max-width: 420px;
+    }
+
+    .phone-modal .modal-content {
+      overflow: hidden;
+      border: 1px solid #dbe3ee;
+      border-radius: 12px;
+      box-shadow: 0 18px 46px rgba(15, 23, 42, .2);
+    }
+
+    .phone-modal .modal-header {
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-bottom-color: #e8eef5;
+    }
+
+    .phone-modal .modal-title {
+      color: #172033;
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .phone-modal .table {
+      table-layout: fixed;
+      font-size: 13px;
+    }
+
+    .phone-modal .table th,
+    .phone-modal .table td {
+      padding: 11px 18px;
+      border-color: #edf2f7;
+    }
+
+    .phone-modal .table th:first-child,
+    .phone-modal .table td:first-child {
+      width: 42%;
+    }
+
+    .phone-modal .table thead th {
+      background: #fff;
+      color: #687587;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .phone-modal .phone-name {
+      color: #334155;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .phone-modal .phone-number {
+      color: #1e40af;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      letter-spacing: .03em;
+    }
+
+    .phone-modal .phone-missing {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
     .copy-feedback {
       position: fixed;
       right: 20px;
@@ -229,13 +297,14 @@
             {% set device_task = (o.device_name or "") ~ ("-" if o.device_name and o.task_id else "") ~ (o.task_id or "") %}
             <td><div class="cell-clip" title="{{ device_task }}">{{ device_task }}</div></td>
             <td>{{ o.match_id if o.match_id is not none else "" }}</td>
-            <td><div class="cell-name">{{ o.order_names or "" }}</div></td>
+            <td><div class="cell-name">{{ (o.order_names or "").replace("&", " ") }}</div></td>
             <td><div class="cell-region">{{ o.order_region or "" }}</div></td>
             <td><div class="cell-clip" title="{{ o.order_price or '' }}">{{ o.order_price or "" }}</div></td>
             <td>
-              <button class="btn btn-outline-secondary btn-sm js-show-phones" type="button"
+              <button class="btn btn-outline-secondary btn-sm phone-view-button js-show-phones" type="button"
                       data-order-names="{{ o.order_names or '' }}" data-order-phones="{{ o.order_phones or '' }}"
-                      {% if not o.order_phones %}disabled{% endif %}>查看手机号</button>
+                      title="查看手机号" aria-label="查看手机号"
+                      {% if not o.order_phones %}disabled{% endif %}>查看</button>
             </td>
             <td><div class="cell-clip" title="{{ o.order_ip or '' }}">{{ o.order_ip or "" }}</div></td>
             <td>
@@ -282,7 +351,7 @@
   </section>
   <div id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></div>
 
-  <div class="modal fade" id="order-phone-modal" tabindex="-1" aria-labelledby="order-phone-title" aria-hidden="true">
+  <div class="modal fade phone-modal" id="order-phone-modal" tabindex="-1" aria-labelledby="order-phone-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -339,7 +408,7 @@
           .map(name => name.trim())
           .filter(Boolean)
           .join("、");
-        const greeting = names ? `${names}，您好！` : "您好！";
+        const greeting = names ? `${names}` : "";
         return `${greeting}您的订单已创建，请尽快完成支付，支付完成后请回复告知，谢谢！`;
       }
 
@@ -355,6 +424,8 @@
             const row = document.createElement("tr");
             const nameCell = document.createElement("td");
             const phoneCell = document.createElement("td");
+            nameCell.className = "phone-name";
+            phoneCell.className = phones[index] ? "phone-number" : "phone-missing";
             nameCell.textContent = names[index] || `购票人 ${index + 1}`;
             phoneCell.textContent = phones[index] || "未填写";
             row.append(nameCell, phoneCell);

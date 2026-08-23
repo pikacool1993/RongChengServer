@@ -16,7 +16,11 @@ from .database import get_db
 from .models import ClientTask, Config, User, UserConfig, Device, Order
 from .response import success, fail
 from .env import load_env
-from .services.order_statistics import query_order_ip_statistics
+from .services.order_statistics import (
+    query_order_ip_prefix_statistics,
+    query_order_ip_statistics,
+    query_order_ip_device_statistics,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -331,11 +335,15 @@ def get_order_ip_statistics(match_id: int, password: str, db: Session = Depends(
         return fail(msg="match_id must be a positive integer")
 
     items = query_order_ip_statistics(db, match_id)
+    device_items = query_order_ip_device_statistics(db, match_id)
+    prefix_items = query_order_ip_prefix_statistics(db, match_id)
     return success(
         {
             "match_id": match_id,
             "total": sum(item["order_count"] for item in items),
             "ip_counts": items,
+            "ip_device_counts": device_items,
+            "ip_prefix_counts": prefix_items,
         },
         encrypt=False,
     )

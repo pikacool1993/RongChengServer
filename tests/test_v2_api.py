@@ -402,19 +402,36 @@ class V2ApiTests(unittest.TestCase):
                     user_id=self.user.id,
                     match_id=86,
                     order_ip="203.0.113.10",
+                    device_name="Desktop",
                     ticket_count=4,
                 ),
                 Order(
                     user_id=self.user.id,
                     match_id=86,
                     order_ip="203.0.113.10",
+                    device_name="Desktop",
                     ticket_count=1,
                 ),
                 Order(
                     user_id=self.user.id,
                     match_id=86,
                     order_ip="2001:db8::1",
+                    device_name="Laptop",
                     ticket_count=2,
+                ),
+                Order(
+                    user_id=self.user.id,
+                    match_id=86,
+                    order_ip="129.111.11.2",
+                    device_name="Edge",
+                    ticket_count=1,
+                ),
+                Order(
+                    user_id=self.user.id,
+                    match_id=86,
+                    order_ip="129.111.11.8",
+                    device_name="Edge",
+                    ticket_count=1,
                 ),
                 Order(
                     user_id=self.user.id,
@@ -436,13 +453,52 @@ class V2ApiTests(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         data = response.json()["data"]
         self.assertEqual(86, data["match_id"])
-        self.assertEqual(3, data["total"])
+        self.assertEqual(5, data["total"])
         self.assertEqual(
             [
                 {"order_ip": "203.0.113.10", "order_count": 2},
+                {"order_ip": "129.111.11.2", "order_count": 1},
+                {"order_ip": "129.111.11.8", "order_count": 1},
                 {"order_ip": "2001:db8::1", "order_count": 1},
             ],
             data["ip_counts"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "order_ip": "203.0.113.10",
+                    "ip_prefix": "203.0.113",
+                    "device_name": "Desktop",
+                    "order_count": 2,
+                },
+                {
+                    "order_ip": "129.111.11.2",
+                    "ip_prefix": "129.111.11",
+                    "device_name": "Edge",
+                    "order_count": 1,
+                },
+                {
+                    "order_ip": "129.111.11.8",
+                    "ip_prefix": "129.111.11",
+                    "device_name": "Edge",
+                    "order_count": 1,
+                },
+                {
+                    "order_ip": "2001:db8::1",
+                    "ip_prefix": "2001:0db8:0000::/48",
+                    "device_name": "Laptop",
+                    "order_count": 1,
+                },
+            ],
+            data["ip_device_counts"],
+        )
+        self.assertEqual(
+            [
+                {"ip_prefix": "129.111.11", "order_count": 2},
+                {"ip_prefix": "203.0.113", "order_count": 2},
+                {"ip_prefix": "2001:0db8:0000::/48", "order_count": 1},
+            ],
+            data["ip_prefix_counts"],
         )
 
         legacy_response = self.client.get(
@@ -456,9 +512,10 @@ class V2ApiTests(unittest.TestCase):
         order = Order(
             user_id=self.user.id,
             match_id=86,
-            order_names="张三",
+            order_names="张三&李四",
             order_phones="13800000000",
             order_ip="203.0.113.10",
+            device_id="device-1",
             ticket_count=1,
         )
         self.db.add(order)
@@ -477,9 +534,11 @@ class V2ApiTests(unittest.TestCase):
         )
         page = self.client.get("/admin-ui/orders")
         self.assertEqual(200, page.status_code)
+        self.assertIn('class="cell-name">张三 李四</div>', page.text)
         self.assertIn('aria-label="复制订单姓名"', page.text)
         self.assertIn('aria-label="复制通知客户支付消息"', page.text)
-        self.assertIn("查看手机号", page.text)
+        self.assertIn('aria-label="查看手机号"', page.text)
+        self.assertIn('>查看</button>', page.text)
         self.assertIn("未通知", page.text)
         self.assertIn('class="form-check notification-toggle"', page.text)
         self.assertNotIn("form-switch", page.text)
@@ -517,6 +576,12 @@ class V2ApiTests(unittest.TestCase):
         self.assertTrue(response.json()["customer_notified"])
         self.db.refresh(order)
         self.assertTrue(order.customer_notified)
+
+        statistics_page = self.client.get("/admin-ui/orders/ip-statistics?match_id=86")
+        self.assertEqual(200, statistics_page.status_code)
+        self.assertIn("IP 前三段汇总", statistics_page.text)
+        self.assertIn("203.0.113", statistics_page.text)
+        self.assertIn("Desktop", statistics_page.text)
 
 
 if __name__ == "__main__":

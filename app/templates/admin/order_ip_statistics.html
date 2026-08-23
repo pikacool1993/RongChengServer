@@ -1,53 +1,194 @@
 {% extends "admin/base.html" %}
 
 {% block content %}
+<style>
+  .ip-statistics-toolbar {
+    padding-bottom: 14px;
+  }
+
+  .ip-statistics-form {
+    max-width: 520px;
+  }
+
+  .ip-statistics-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    align-items: center;
+    color: #687587;
+    font-size: 12px;
+  }
+
+  .ip-statistics-summary strong {
+    color: #172033;
+    font-size: 14px;
+  }
+
+  .ip-statistics-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 760px);
+    gap: 18px;
+    align-items: start;
+    padding: 18px 20px 22px;
+  }
+
+  .statistics-section {
+    min-width: 0;
+  }
+
+  .statistics-section-title {
+    margin: 0 0 8px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .statistics-table {
+    width: 100%;
+    table-layout: fixed;
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .statistics-table th,
+  .statistics-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+
+  .statistics-table thead th {
+    color: #687587;
+    font-size: 11px;
+  }
+
+  .prefix-table th:first-child,
+  .prefix-table td:first-child {
+    width: 68%;
+  }
+
+  .detail-table th:nth-child(1),
+  .detail-table td:nth-child(1) {
+    width: 23%;
+  }
+
+  .detail-table th:nth-child(2),
+  .detail-table td:nth-child(2) {
+    width: 29%;
+  }
+
+  .detail-table th:nth-child(3),
+  .detail-table td:nth-child(3) {
+    width: 31%;
+  }
+
+  .detail-table th:nth-child(4),
+  .detail-table td:nth-child(4) {
+    width: 17%;
+  }
+
+  .statistics-table code {
+    color: #174ea6;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .statistics-device {
+    color: #334155;
+    font-weight: 650;
+  }
+
+  .statistics-empty {
+    padding: 22px 12px;
+    color: #94a3b8;
+    text-align: center;
+  }
+
+  @media (max-width: 900px) {
+    .ip-statistics-layout {
+      grid-template-columns: 1fr;
+      gap: 22px;
+    }
+  }
+</style>
+
 <div class="page-panel">
   <div class="page-panel-header">
     <div>
       <h1 class="page-title">IP 订单统计</h1>
-      <div class="page-subtitle">按比赛 ID 汇总每个下单 IP 的订单记录数</div>
+      <div class="page-subtitle">按比赛 ID 查看 IP 前三段汇总及对应设备明细</div>
     </div>
     <a class="btn btn-outline-secondary btn-sm" href="/admin-ui/orders">返回订单管理</a>
   </div>
 
-  <div class="toolbar">
-    <form class="row g-2 align-items-end" method="get" action="/admin-ui/orders/ip-statistics">
-      <div class="col-sm-6 col-md-4">
+  <div class="toolbar ip-statistics-toolbar">
+    <form class="row g-2 align-items-end ip-statistics-form" method="get" action="/admin-ui/orders/ip-statistics">
+      <div class="col">
         <label class="form-label mb-1" for="statistics-match-id">比赛 ID</label>
         <input id="statistics-match-id" class="form-control" name="match_id" type="number" min="1" step="1"
                value="{{ match_id }}" placeholder="例如 86" required>
       </div>
-      <div class="col-sm-auto">
+      <div class="col-auto">
         <button class="btn btn-primary" type="submit">查询</button>
       </div>
     </form>
     {% if error %}
       <div class="alert alert-danger mt-3 mb-0">比赛 ID 必须是正整数。</div>
     {% elif match_id_value is not none %}
-      <div class="text-muted small mt-3">比赛 {{ match_id_value }} 共 {{ total }} 条带 IP 订单，{{ items|length }} 个 IP。</div>
+      <div class="ip-statistics-summary mt-3">
+        <span>比赛 <strong>{{ match_id_value }}</strong></span>
+        <span>订单 <strong>{{ total }}</strong> 条</span>
+        <span>IP <strong>{{ ip_total }}</strong> 个</span>
+        <span>前三段 <strong>{{ prefix_items|length }}</strong> 个</span>
+      </div>
     {% endif %}
   </div>
 
   {% if match_id_value is not none and not error %}
-    <div class="table-responsive">
-      <table class="table table-hover align-middle">
-        <thead>
-          <tr>
-            <th>下单 IP</th>
-            <th class="text-end">订单数量</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in items %}
-            <tr>
-              <td><code>{{ item.order_ip }}</code></td>
-              <td class="text-end fw-bold">{{ item.order_count }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="2" class="text-center text-muted py-4">该比赛暂无带 IP 的订单</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="ip-statistics-layout">
+      <section class="statistics-section" aria-labelledby="prefix-statistics-title">
+        <h2 class="statistics-section-title" id="prefix-statistics-title">IP 前三段汇总</h2>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle statistics-table prefix-table">
+            <thead>
+              <tr><th>IP 前三段</th><th class="text-end">订单数</th></tr>
+            </thead>
+            <tbody>
+              {% for item in prefix_items %}
+                <tr>
+                  <td><code>{{ item.ip_prefix }}</code></td>
+                  <td class="text-end fw-bold">{{ item.order_count }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="2" class="statistics-empty">暂无统计</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="statistics-section" aria-labelledby="detail-statistics-title">
+        <h2 class="statistics-section-title" id="detail-statistics-title">IP / 设备明细</h2>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle statistics-table detail-table">
+            <thead>
+              <tr><th>IP 前三段</th><th>下单 IP</th><th>设备名</th><th class="text-end">订单数</th></tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+                <tr>
+                  <td><code>{{ item.ip_prefix }}</code></td>
+                  <td><code>{{ item.order_ip }}</code></td>
+                  <td class="statistics-device">{{ item.device_name or "未命名设备" }}</td>
+                  <td class="text-end fw-bold">{{ item.order_count }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="statistics-empty">该比赛暂无带 IP 的订单</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   {% endif %}
 </div>

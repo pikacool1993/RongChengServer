@@ -17,7 +17,11 @@ from ..schemas_v2 import (
 )
 from ..v2_response import v2_success
 from ..v2_security import require_admin
-from ..services.order_statistics import query_order_ip_statistics
+from ..services.order_statistics import (
+    query_order_ip_prefix_statistics,
+    query_order_ip_statistics,
+    query_order_ip_device_statistics,
+)
 
 
 router = APIRouter(
@@ -202,11 +206,15 @@ def get_order_ip_statistics(
     db: Session = Depends(get_db),
 ):
     items = query_order_ip_statistics(db, match_id)
+    device_items = query_order_ip_device_statistics(db, match_id)
+    prefix_items = query_order_ip_prefix_statistics(db, match_id)
     return v2_success(
         {
             "match_id": match_id,
             "total": sum(item["order_count"] for item in items),
             "ip_counts": items,
+            "ip_device_counts": device_items,
+            "ip_prefix_counts": prefix_items,
         }
     )
 

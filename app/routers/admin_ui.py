@@ -14,7 +14,11 @@ from starlette.middleware.sessions import SessionMiddleware
 from ..database import get_db
 from ..env import load_env
 from ..models import ClientTask, Config, Device, Order, User, UserConfig, now_cn
-from ..services.order_statistics import query_order_ip_statistics
+from ..services.order_statistics import (
+    query_order_ip_prefix_statistics,
+    query_order_ip_statistics,
+    query_order_ip_device_statistics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -519,13 +523,18 @@ def _order_ip_statistics_context(
     db: Session,
 ) -> dict[str, Any]:
     match_id_value = _parse_match_id(match_id)
-    items = query_order_ip_statistics(db, match_id_value) if match_id_value is not None else []
+    items = query_order_ip_device_statistics(db, match_id_value) if match_id_value is not None else []
+    prefix_items = (
+        query_order_ip_prefix_statistics(db, match_id_value) if match_id_value is not None else []
+    )
     return {
         "request": request,
         "match_id": "" if match_id is None else match_id.strip(),
         "match_id_value": match_id_value,
         "items": items,
+        "prefix_items": prefix_items,
         "total": sum(item["order_count"] for item in items),
+        "ip_total": len({item["order_ip"] for item in items}),
         "error": bool(match_id and match_id_value is None),
     }
 
@@ -557,11 +566,15 @@ def order_ip_statistics_data(
         return JSONResponse(status_code=401, content={"detail": "not authenticated"})
     if match_id is None or match_id <= 0:
         return JSONResponse(status_code=422, content={"detail": "match_id must be a positive integer"})
-    items = query_order_ip_statistics(db, match_id)
+    ip_items = query_order_ip_statistics(db, match_id)
+    items = query_order_ip_device_statistics(db, match_id)
+    prefix_items = query_order_ip_prefix_statistics(db, match_id)
     return {
         "match_id": match_id,
-        "total": sum(item["order_count"] for item in items),
-        "ip_counts": items,
+        "total": sum(item["order_count"] for item in ip_items),
+        "ip_counts": ip_items,
+        "ip_device_counts": items,
+        "ip_prefix_counts": prefix_items,
     }
 
 
