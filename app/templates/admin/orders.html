@@ -288,7 +288,7 @@
                          {% if o.customer_notified %}checked{% endif %}>
                 </label>
                 <button class="btn btn-outline-secondary btn-sm quick-copy-button js-copy-name" type="button"
-                        data-order-names="{{ o.order_names or '' }}" {% if not o.order_names %}disabled{% endif %}
+                        data-copy-names="{{ (o.order_names or '').replace('&', ' ') }}" {% if not o.order_names %}disabled{% endif %}
                         title="复制订单姓名" aria-label="复制订单姓名">名</button>
                 <button class="btn btn-outline-primary btn-sm quick-copy-button js-copy-payment" type="button"
                         data-order-names="{{ o.order_names or '' }}" title="复制通知客户支付的消息" aria-label="复制通知客户支付消息">付</button>
@@ -439,7 +439,7 @@
       document.querySelectorAll(".js-copy-name").forEach(button => {
         button.addEventListener("click", async () => {
           try {
-            await copyText(button.dataset.orderNames || "");
+            await copyText(button.dataset.copyNames || "");
             showFeedback("订单姓名已复制");
           } catch (error) {
             showFeedback("复制失败，请重试", true);

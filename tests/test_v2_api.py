@@ -535,6 +535,7 @@ class V2ApiTests(unittest.TestCase):
         page = self.client.get("/admin-ui/orders")
         self.assertEqual(200, page.status_code)
         self.assertIn('class="cell-name">张三 李四</div>', page.text)
+        self.assertIn('data-copy-names="张三 李四"', page.text)
         self.assertIn('aria-label="复制订单姓名"', page.text)
         self.assertIn('aria-label="复制通知客户支付消息"', page.text)
         self.assertIn('aria-label="查看手机号"', page.text)
