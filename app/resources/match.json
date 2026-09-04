@@ -1,16 +1,16 @@
 {
-  "id": 95,
+  "id": 96,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
   "team1_name": "成都蓉城",
-  "team2_color": "rgba(221, 39, 37, 1)",
-  "team2_id": 83,
-  "team2_logo": "https://duihui.duoduocdn.com/zuqiu/zq_liaoningtieren_352203.png",
-  "team2_name": "辽宁铁人",
-  "time_e": 1788010500,
-  "time_s": 1788003300,
+  "team2_color": "rgba(9, 76, 151, 1)",
+  "team2_id": 46,
+  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/202474/天津津门虎.png",
+  "team2_name": "天津津门虎",
+  "time_e": 1791639300,
+  "time_s": 1791632100,
   "sale": 1,
-  "line_s_time": 1787810400,
-  "line_e_time": 1787984400
+  "line_s_time": 1791439200,
+  "line_e_time": 1791613200
 }
