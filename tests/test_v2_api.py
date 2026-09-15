@@ -538,6 +538,8 @@ class V2ApiTests(unittest.TestCase):
         self.assertIn('data-copy-names="张三 李四"', page.text)
         self.assertIn('aria-label="复制订单姓名"', page.text)
         self.assertIn('aria-label="复制通知客户支付消息"', page.text)
+        self.assertIn('await saveNotificationStatus(toggle, true, false);', page.text)
+        self.assertIn("支付通知已复制，已标记为已通知", page.text)
         self.assertIn('aria-label="查看手机号"', page.text)
         self.assertIn('>查看</button>', page.text)
         self.assertIn("未通知", page.text)

@@ -412,6 +412,38 @@
         return `${greeting}您的订单已创建，请尽快完成支付，支付完成后请回复告知，谢谢！`;
       }
 
+      function updateNotificationToggleLabel(toggle) {
+        const label = toggle.checked ? "已通知" : "未通知";
+        const container = toggle.closest(".notification-toggle");
+        container.title = label;
+        container.setAttribute("aria-label", label);
+      }
+
+      async function saveNotificationStatus(toggle, notified, previousValue) {
+        toggle.checked = notified;
+        toggle.disabled = true;
+        toggle.closest(".notification-toggle").title = "保存中";
+        try {
+          const body = new URLSearchParams({notified: String(notified)});
+          const response = await fetch(`/admin-ui/orders/${toggle.dataset.orderId}/customer-notified`, {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+            body,
+            credentials: "same-origin",
+          });
+          if (!response.ok) throw new Error("save failed");
+          const result = await response.json();
+          toggle.checked = Boolean(result.customer_notified);
+          updateNotificationToggleLabel(toggle);
+        } catch (error) {
+          toggle.checked = previousValue;
+          updateNotificationToggleLabel(toggle);
+          throw error;
+        } finally {
+          toggle.disabled = false;
+        }
+      }
+
       document.querySelectorAll(".js-show-phones").forEach(button => {
         button.addEventListener("click", () => {
           const names = (button.dataset.orderNames || "").split("&").map(value => value.trim());
@@ -451,7 +483,16 @@
         button.addEventListener("click", async () => {
           try {
             await copyText(paymentMessage(button.dataset.orderNames || ""));
-            showFeedback("支付通知已复制");
+            const toggle = button.closest("tr").querySelector(".js-notification-toggle");
+            if (toggle && !toggle.checked) {
+              try {
+                await saveNotificationStatus(toggle, true, false);
+              } catch (error) {
+                showFeedback("支付通知已复制，但通知状态保存失败", true);
+                return;
+              }
+            }
+            showFeedback("支付通知已复制，已标记为已通知");
           } catch (error) {
             showFeedback("复制失败，请重试", true);
           }
@@ -461,29 +502,11 @@
       document.querySelectorAll(".js-notification-toggle").forEach(toggle => {
         toggle.addEventListener("change", async () => {
           const previousValue = !toggle.checked;
-          toggle.disabled = true;
-          toggle.closest(".notification-toggle").title = "保存中";
           try {
-            const body = new URLSearchParams({notified: String(toggle.checked)});
-            const response = await fetch(`/admin-ui/orders/${toggle.dataset.orderId}/customer-notified`, {
-              method: "POST",
-              headers: {"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
-              body,
-              credentials: "same-origin",
-            });
-            if (!response.ok) throw new Error("save failed");
-            const result = await response.json();
-            toggle.checked = Boolean(result.customer_notified);
-            toggle.closest(".notification-toggle").title = toggle.checked ? "已通知" : "未通知";
-            toggle.closest(".notification-toggle").setAttribute("aria-label", toggle.checked ? "已通知" : "未通知");
+            await saveNotificationStatus(toggle, toggle.checked, previousValue);
             showFeedback(toggle.checked ? "已标记为已通知" : "已标记为未通知");
           } catch (error) {
-            toggle.checked = previousValue;
-            toggle.closest(".notification-toggle").title = previousValue ? "已通知" : "未通知";
-            toggle.closest(".notification-toggle").setAttribute("aria-label", previousValue ? "已通知" : "未通知");
             showFeedback("通知状态保存失败", true);
-          } finally {
-            toggle.disabled = false;
           }
         });
       });
