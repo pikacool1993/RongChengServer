@@ -154,6 +154,7 @@ def _live_task_groups(db: Session) -> list[dict[str, Any]]:
 
         device_group["tasks"].append(
             {
+                "id": task.id,
                 "task_id": task.task_id,
                 "status": task.status,
                 "updated_at": task.updated_at.strftime("%Y-%m-%d %H:%M:%S") if task.updated_at else "",
@@ -188,6 +189,18 @@ def live_tasks_delete_all(request: Request, db: Session = Depends(get_db)):
 
     db.query(ClientTask).delete(synchronize_session=False)
     db.commit()
+    return RedirectResponse(url="/admin-ui/live-tasks", status_code=302)
+
+
+@router.post("/admin-ui/live-tasks/{task_id}/delete")
+def live_task_delete(request: Request, task_id: int, db: Session = Depends(get_db)):
+    if not _require_login(request):
+        return _redirect_to_login("/admin-ui/live-tasks")
+
+    task = db.query(ClientTask).filter(ClientTask.id == task_id).first()
+    if task:
+        db.delete(task)
+        db.commit()
     return RedirectResponse(url="/admin-ui/live-tasks", status_code=302)
 
 

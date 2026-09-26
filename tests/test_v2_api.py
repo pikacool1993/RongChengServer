@@ -305,6 +305,15 @@ class V2ApiTests(unittest.TestCase):
         )
         self.db.commit()
 
+        online_task_id = self.db.query(ClientTask).filter(ClientTask.task_id == "task-online").one().id
+        unauthenticated_task_delete = self.client.post(
+            f"/admin-ui/live-tasks/{online_task_id}/delete",
+            follow_redirects=False,
+        )
+        self.assertEqual(302, unauthenticated_task_delete.status_code)
+        self.assertTrue(unauthenticated_task_delete.headers["location"].startswith("/admin-ui/login"))
+        self.assertEqual(2, self.db.query(ClientTask).count())
+
         unauthenticated_delete = self.client.post(
             "/admin-ui/live-tasks/delete-all",
             follow_redirects=False,
@@ -334,6 +343,20 @@ class V2ApiTests(unittest.TestCase):
         self.assertEqual("valid-key", group["api_key"])
         self.assertEqual(2, group["task_count"])
         self.assertEqual("Desktop", group["devices"][0]["device_name"])
+        task_to_delete = next(
+            task for task in group["devices"][0]["tasks"] if task["task_id"] == "task-online"
+        )
+        self.assertIsInstance(task_to_delete["id"], int)
+
+        task_delete_response = self.client.post(
+            f"/admin-ui/live-tasks/{task_to_delete['id']}/delete",
+            follow_redirects=False,
+        )
+        self.assertEqual(302, task_delete_response.status_code)
+        self.assertEqual("/admin-ui/live-tasks", task_delete_response.headers["location"])
+        self.assertEqual(1, self.db.query(ClientTask).count())
+        remaining_tasks = self.client.get("/admin-ui/live-tasks/data").json()["groups"]
+        self.assertEqual(["task-offline"], [task["task_id"] for task in remaining_tasks[0]["devices"][0]["tasks"]])
 
         delete_response = self.client.post(
             "/admin-ui/live-tasks/delete-all",
