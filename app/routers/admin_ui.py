@@ -330,6 +330,9 @@ def users_delete(request: Request, api_key: str, db: Session = Depends(get_db)):
         db.query(ClientTask).filter(ClientTask.user_id == u.id).delete(synchronize_session=False)
         db.query(Device).filter(Device.user_id == u.id).delete(synchronize_session=False)
         db.query(UserConfig).filter(UserConfig.user_id == u.id).delete(synchronize_session=False)
+        db.query(Order).filter(Order.user_id == u.id).update(
+            {Order.user_id: None}, synchronize_session=False
+        )
         db.delete(u)
         db.commit()
     return RedirectResponse(url="/admin-ui/users", status_code=302)
