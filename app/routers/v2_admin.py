@@ -115,6 +115,8 @@ def update_user(
 def delete_user(user_id: int = ApiPath(..., gt=0), db: Session = Depends(get_db)):
     user = _user_or_404(db, user_id)
     db.query(ClientTask).filter(ClientTask.user_id == user.id).delete(synchronize_session=False)
+    db.query(Device).filter(Device.user_id == user.id).delete(synchronize_session=False)
+    db.query(UserConfig).filter(UserConfig.user_id == user.id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
     return v2_success({})

@@ -140,6 +140,8 @@ def delete_user(api_key: str, password: str, db: Session = Depends(get_db)):
         return fail(msg="User not found")
 
     db.query(ClientTask).filter(ClientTask.user_id == u.id).delete(synchronize_session=False)
+    db.query(Device).filter(Device.user_id == u.id).delete(synchronize_session=False)
+    db.query(UserConfig).filter(UserConfig.user_id == u.id).delete(synchronize_session=False)
     db.delete(u)
     db.commit()
     return success({}, encrypt=False)

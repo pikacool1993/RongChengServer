@@ -328,6 +328,7 @@ def users_delete(request: Request, api_key: str, db: Session = Depends(get_db)):
     u = db.query(User).filter(User.api_key == api_key).first()
     if u:
         db.query(ClientTask).filter(ClientTask.user_id == u.id).delete(synchronize_session=False)
+        db.query(Device).filter(Device.user_id == u.id).delete(synchronize_session=False)
         db.query(UserConfig).filter(UserConfig.user_id == u.id).delete(synchronize_session=False)
         db.delete(u)
         db.commit()
