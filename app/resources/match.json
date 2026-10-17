@@ -1,16 +1,16 @@
 {
-  "id": 97,
+  "id": 100,
   "team1_color": "rgba(202, 21, 29, 1)",
   "team1_id": 42,
   "team1_logo": "https://fcscdn3.k4n.cc/upload/a30/png/2024229/1.png",
   "team1_name": "成都蓉城",
-  "team2_color": "rgba(9, 76, 151, 1)",
-  "team2_id": 46,
-  "team2_logo": "https://fcscdn3.k4n.cc/upload/a30/png/202474/天津津门虎.png",
-  "team2_name": "天津津门虎",
-  "time_e": 1791639300,
-  "time_s": 1791632100,
+  "team2_color": "rgba(69, 191, 244, 1)",
+  "team2_id": 56,
+  "team2_logo": "https://duihui.duoduocdn.com/zuqiu/zq_dalianyingbozuqiujulebu_567355.png",
+  "team2_name": "大连英博海发",
+  "time_e": 1792834200,
+  "time_s": 1792827000,
   "sale": 1,
-  "line_s_time": 1791439200,
-  "line_e_time": 1791613200
+  "line_s_time": 1792648800,
+  "line_e_time": 1792805400
 }
